@@ -41,6 +41,8 @@ def score_post(text: str) -> dict:
         hook += 15
     if re.search(r'(真相|秘密|其實|沒人|不知道|才發現|顛覆|陷阱|血淚)', text):
         hook += 12
+    if re.search(r'(truth|secret|actually|nobody|discovered|shocking|trap|mistake)', text, re.IGNORECASE):
+        hook += 12
     if re.search(r'(99%|90%|\d+%)', text):
         hook += 8
     hook = min(98, hook)
@@ -49,7 +51,11 @@ def score_post(text: str) -> dict:
     engage = 35
     if re.search(r'(你|你們|大家)', text):
         engage += 15
+    if re.search(r'\b(you|your|everyone)\b', text, re.IGNORECASE):
+        engage += 15
     if re.search(r'(留言|評論|分享|按讚|追蹤|轉發|收藏)', text):
+        engage += 18
+    if re.search(r'\b(comment|share|like|follow|save|repost)\b', text, re.IGNORECASE):
         engage += 18
     if re.search(r'[？?]$', text, re.MULTILINE):
         engage += 12
@@ -57,20 +63,28 @@ def score_post(text: str) -> dict:
         engage += 8
     if re.search(r'(怎麼看|你呢|同意嗎|覺得呢|哪一派|告訴我)', text):
         engage += 15
+    if re.search(r'\b(what do you think|agree|thoughts|which side|tell me)\b', text, re.IGNORECASE):
+        engage += 15
     engage = min(98, engage)
 
     # 3. Conversation Durability (Threads AI — 72hr / 3+ participants)
     convo = 30
     if re.search(r'(但是|然而|不過|可是|反而|偏偏)', text):
         convo += 15
+    if re.search(r'\b(but|however|yet|instead|surprisingly)\b', text, re.IGNORECASE):
+        convo += 15
     q_count = len(re.findall(r'[？?]', text))
     if q_count >= 2:
         convo += 12
     if re.search(r'(爭議|討論|辯論|意見|觀點|unpopular)', text):
         convo += 18
+    if re.search(r'\b(controversial|debate|opinion|unpopular)\b', text, re.IGNORECASE):
+        convo += 18
     if length > 100:
         convo += 10
     if re.search(r'(你覺得|同意嗎|怎麼看|哪一派)', text):
+        convo += 15
+    if re.search(r'\b(what do you think|agree|thoughts|which side|tell me)\b', text, re.IGNORECASE):
         convo += 15
     convo = min(98, convo)
 
@@ -79,6 +93,8 @@ def score_post(text: str) -> dict:
     if hook > 70:
         vel += 20
     if re.search(r'(緊急|剛剛|最新|breaking|速報|今天|重磅)', text):
+        vel += 15
+    if re.search(r'\b(urgent|just now|latest|breaking|today|exclusive|first time)\b', text, re.IGNORECASE):
         vel += 15
     if 50 <= length <= 300:
         vel += 12

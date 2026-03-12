@@ -159,15 +159,17 @@ The MCP server exposes 10 tools:
 | `get_trend_history` | Query historical trend data for a keyword |
 | `take_snapshot` | Fetch + save snapshot to history DB |
 
-**Content Tools (v0.3.0):**
+**Content Guide Tools (v0.3.2):**
+
+All content tools return **structured guides** — the LLM does all judgment and creative work.
 
 | Tool | Description |
 |------|-------------|
-| `generate_viral_posts` | Generate viral posts scored against Meta's 7 ranking patents |
-| `score_viral_post` | Score any text on 5 patent-derived dimensions (0-100 + grade) |
-| `generate_content` | Generate complete 3-platform content package (Threads + Instagram + Facebook) |
-| `review_content` | Review content against patent scores + platform compliance, with optional auto-fix |
-| `generate_reel_script` | Generate Reels/Short video scripts with timing and visual cues |
+| `get_content_brief` | Writing brief: hook examples, patent strategies, scoring dimensions, CTA examples |
+| `get_scoring_guide` | 5-dimension scoring framework: evaluation criteria, high/low signals, grade thresholds |
+| `get_platform_specs` | Platform specs: char limits, format tips, algo priority, best times |
+| `get_review_checklist` | Review checklist: platform compliance, quality gates, checklist items with severity |
+| `get_reel_guide` | Reel/Short video guide: scene structure, timing, visual guidance, editing tips |
 
 ## CLI Reference
 
@@ -311,42 +313,59 @@ agg = TrendAggregator(sources=[MySource, ...])
 | Docker Hub | 100 req / 5 min | Public API |
 | Stack Overflow | 300 req / day | Without API key |
 
-## Content Generation (v0.3.0)
+## Content Guide Tools (v0.3.2)
 
-Generate viral-optimized content scored against Meta's 7 ranking patents (EdgeRank, Andromeda, Dear Algo, Conversation Durability, etc.).
+MCP tools provide structured guides for creating viral content optimized against Meta's 7 ranking patents. **The LLM does all judgment and creative work** — tools only provide frameworks and criteria.
 
 ### Python
 
 ```python
-from trend_pulse.content.generator import generate_posts
-from trend_pulse.patents.scorer import score_post
-from trend_pulse.content.reviewer import review
-from trend_pulse.content.adapter import full_pipeline, generate_reel_script
+from trend_pulse.content.briefing import (
+    get_content_brief,
+    get_scoring_guide,
+    get_review_checklist,
+    get_reel_guide,
+)
+from trend_pulse.content.adapter import get_platform_specs
 
-# Generate scored posts
-posts = generate_posts("AI tools", content_type="debate", count=5)
-for p in posts:
-    print(f"[{p['scores']['grade']}] {p['scores']['overall']}/100 — {p['text'][:60]}...")
+# Get writing brief — hook examples, patent strategies, scoring dimensions
+brief = get_content_brief("AI tools", "debate", "threads", lang="en")
+print(f"Topic: {brief['topic']}, Char limit: {brief['char_limit']}")
+print(f"Hook examples: {len(brief['hook_examples'])}")
+print(f"Patent strategies: {len(brief['patent_strategies'])}")
 
-# Score any text
-result = score_post("Your post text here")
-print(f"Score: {result['overall']}/100 ({result['grade']})")
-print(f"Dimensions: {result['dimensions']}")
+# Get scoring guide — 5-dimension evaluation framework
+guide = get_scoring_guide("en")
+for name, dim in guide["dimensions"].items():
+    print(f"{name}: weight={dim['weight']}, {dim['description']}")
+print(f"Grades: {list(guide['grade_thresholds'].keys())}")
 
-# Review with auto-fix
-result = review("Short post", platform="threads", auto_fix=True)
-print(f"Verdict: {result['verdict']}, Issues: {result['issue_count']}")
+# Get review checklist — structured quality checks
+checklist = get_review_checklist("threads", "en")
+for item in checklist["checklist"]:
+    print(f"[{item['severity']}] {item['check']}")
+print(f"Quality gate: overall >= {checklist['quality_gate']['min_overall']}")
 
-# Full 3-platform content package
-packages = full_pipeline("Claude Code", content_type="opinion", count=2)
-for pkg in packages["packages"]:
-    print(f"Threads: {pkg['platforms']['threads']['chars']} chars")
-    print(f"Instagram: {pkg['platforms']['instagram']['post_type']}")
+# Get platform specs — char limits, algo priority, best times
+specs = get_platform_specs("", "en")  # all platforms
+for name, spec in specs.items():
+    print(f"{name}: {spec['max_chars']} chars, best at {spec['best_times']}")
 
-# Reel script
-script = generate_reel_script("AI", style="educational", duration=30)
-for scene in script["scenes"]:
-    print(f"[{scene['time']}] {scene['type']}: {scene['caption']}")
+# Get reel guide — scene structure for video scripts
+guide = get_reel_guide("educational", 30, "en")
+for scene in guide["scene_structure"]:
+    print(f"[{scene['type']}] {scene['duration_seconds']}s — {scene['purpose']}")
+```
+
+### Workflow: MCP Guides LLM
+
+```
+1. get_content_brief()      → LLM gets writing guide with hook examples & strategies
+2. LLM creates content      → Original text based on brief
+3. get_scoring_guide()       → LLM self-scores on 5 dimensions
+4. LLM revises              → Iterate until score >= 70
+5. get_review_checklist()    → LLM checks against quality gate
+6. get_platform_specs()      → LLM adapts for each platform
 ```
 
 ### Patent-Based Scoring (5 Dimensions)
@@ -359,7 +378,7 @@ for scene in script["scenes"]:
 | Velocity Potential | 15% | Andromeda Real-time |
 | Format Score | 15% | Multi-modal Indexing |
 
-Grades: **S** (90+), **A** (80+), **B** (70+), **C** (50+), **D** (<50)
+Grades: **S** (90+), **A** (80+), **B** (70+), **C** (55+), **D** (<55)
 
 ### Content Types
 

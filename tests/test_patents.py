@@ -3,10 +3,15 @@
 import pytest
 from trend_pulse.patents.templates import (
     HOOK_TEMPLATES,
+    HOOK_TEMPLATES_EN,
     BODY_TEMPLATES,
+    BODY_TEMPLATES_EN,
     CTA_TEMPLATES,
+    CTA_TEMPLATES_EN,
     CONTENT_TYPES,
     fill_template,
+    fill_template_en,
+    get_templates,
 )
 from trend_pulse.patents.scorer import score_post
 from trend_pulse.patents.database import (
@@ -26,17 +31,33 @@ class TestTemplates:
         expected = {"curiosity_gap", "controversy", "story", "data_driven", "engagement_trigger"}
         assert set(HOOK_TEMPLATES.keys()) == expected
 
+    def test_hook_templates_en_has_5_categories(self):
+        assert len(HOOK_TEMPLATES_EN) == 5
+        assert set(HOOK_TEMPLATES_EN.keys()) == set(HOOK_TEMPLATES.keys())
+
     def test_each_hook_category_has_patent_and_templates(self):
         for cat, data in HOOK_TEMPLATES.items():
             assert "patent" in data, f"{cat} missing patent"
             assert "templates" in data, f"{cat} missing templates"
             assert len(data["templates"]) >= 5, f"{cat} has too few templates"
 
+    def test_each_en_hook_category_has_patent_and_templates(self):
+        for cat, data in HOOK_TEMPLATES_EN.items():
+            assert "patent" in data, f"EN {cat} missing patent"
+            assert "templates" in data, f"EN {cat} missing templates"
+            assert len(data["templates"]) >= 5, f"EN {cat} has too few templates"
+
     def test_body_templates_not_empty(self):
         assert len(BODY_TEMPLATES) >= 5
 
+    def test_body_templates_en_not_empty(self):
+        assert len(BODY_TEMPLATES_EN) >= 5
+
     def test_cta_templates_not_empty(self):
         assert len(CTA_TEMPLATES) >= 5
+
+    def test_cta_templates_en_not_empty(self):
+        assert len(CTA_TEMPLATES_EN) >= 5
 
     def test_content_types_has_8_types(self):
         assert len(CONTENT_TYPES) == 8
@@ -66,6 +87,18 @@ class TestTemplates:
         num = int(result.replace("個重點", ""))
         assert 3 <= num <= 9
 
+    def test_fill_template_en_replaces_topic(self):
+        result = fill_template_en("About {topic}", "AI")
+        assert result == "About AI"
+
+    def test_fill_template_en_replaces_time(self):
+        result = fill_template_en("After {time} of work", "AI")
+        assert "{time}" not in result
+
+    def test_fill_template_en_replaces_count(self):
+        result = fill_template_en("{count} key points", "AI")
+        assert "{count}" not in result
+
     def test_fill_template_no_placeholders_left(self):
         for cat_data in HOOK_TEMPLATES.values():
             for tmpl in cat_data["templates"]:
@@ -73,6 +106,30 @@ class TestTemplates:
                 assert "{topic}" not in result
                 assert "{time}" not in result
                 assert "{count}" not in result
+
+    def test_fill_template_en_no_placeholders_left(self):
+        for cat_data in HOOK_TEMPLATES_EN.values():
+            for tmpl in cat_data["templates"]:
+                result = fill_template_en(tmpl, "test topic")
+                assert "{topic}" not in result
+                assert "{time}" not in result
+                assert "{count}" not in result
+
+    def test_get_templates_zh(self):
+        hooks, body, cta = get_templates("zh-TW")
+        assert hooks is HOOK_TEMPLATES
+        assert body is BODY_TEMPLATES
+        assert cta is CTA_TEMPLATES
+
+    def test_get_templates_en(self):
+        hooks, body, cta = get_templates("en")
+        assert hooks is HOOK_TEMPLATES_EN
+        assert body is BODY_TEMPLATES_EN
+        assert cta is CTA_TEMPLATES_EN
+
+    def test_get_templates_default_is_zh(self):
+        hooks, _, _ = get_templates()
+        assert hooks is HOOK_TEMPLATES
 
 
 # ── Scorer ──
@@ -149,6 +206,38 @@ class TestScorer:
         flat = score_post("這是一段沒有結構的文字")["dimensions"]["format_score"]
         structured = score_post("標題：重點\n\n1. 第一點\n\n2. 第二點\n\n3. 第三點")["dimensions"]["format_score"]
         assert structured > flat
+
+    # ── English scoring tests ──
+
+    def test_english_hook_power(self):
+        """English hook keywords should boost hook_power."""
+        without = score_post("AI is important technology")["dimensions"]["hook_power"]
+        with_hook = score_post("The truth about AI nobody talks about?")["dimensions"]["hook_power"]
+        assert with_hook > without
+
+    def test_english_engagement(self):
+        """English engagement keywords should boost engagement_trigger."""
+        without = score_post("AI is a hot topic")["dimensions"]["engagement_trigger"]
+        with_eng = score_post("What do you think about AI? Share your thoughts")["dimensions"]["engagement_trigger"]
+        assert with_eng > without
+
+    def test_english_conversation(self):
+        """English controversy keywords should boost conversation_durability."""
+        without = score_post("AI is useful")["dimensions"]["conversation_durability"]
+        with_convo = score_post("But the controversial debate about AI opinion is heated. What do you think?")["dimensions"]["conversation_durability"]
+        assert with_convo > without
+
+    def test_english_velocity(self):
+        """English urgency keywords should boost velocity_potential."""
+        without = score_post("AI development trends are interesting")["dimensions"]["velocity_potential"]
+        with_vel = score_post("Breaking today: exclusive first time AI launch!")["dimensions"]["velocity_potential"]
+        assert with_vel > without
+
+    def test_english_overall_decent_score(self):
+        """A well-crafted English post should score > 50 (not < 40 as before)."""
+        text = "The truth about AI nobody talks about. What do you think?"
+        result = score_post(text)
+        assert result["overall"] > 50
 
 
 # ── Database ──

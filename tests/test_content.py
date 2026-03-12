@@ -1,89 +1,17 @@
-"""Tests for content/ module — generator, adapter, reviewer."""
+"""Tests for content/ module — adapter, briefing (guides)."""
 
 import pytest
-from trend_pulse.content.generator import generate_posts, analyze_trends_and_generate
 from trend_pulse.content.adapter import (
     PLATFORM_SPECS,
-    adapt_for_threads,
-    adapt_for_instagram,
-    adapt_for_facebook,
-    generate_hashtags,
-    generate_elaboration,
-    generate_image_prompt,
-    generate_quote_card_html,
-    generate_reel_script,
-    full_pipeline,
+    get_platform_specs,
 )
-from trend_pulse.content.reviewer import review, PLATFORM_LIMITS
-
-
-# ── Generator ──
-
-
-class TestGenerator:
-    def test_generate_posts_returns_list(self):
-        posts = generate_posts("AI", "debate", 3)
-        assert isinstance(posts, list)
-        assert len(posts) == 3
-
-    def test_generate_posts_sorted_by_score(self):
-        posts = generate_posts("AI", "debate", 5)
-        scores = [p["scores"]["overall"] for p in posts]
-        assert scores == sorted(scores, reverse=True)
-
-    def test_generate_posts_has_required_fields(self):
-        posts = generate_posts("AI", "opinion", 1)
-        p = posts[0]
-        assert "text" in p
-        assert "scores" in p
-        assert "hook_category" in p
-        assert "hook_patent" in p
-        assert "content_type" in p
-        assert "rank" in p
-        assert p["rank"] == 1
-
-    def test_generate_posts_within_500_chars(self):
-        posts = generate_posts("非常長的主題名稱用來測試", "debate", 5)
-        for p in posts:
-            assert len(p["text"]) <= 500, f"Post {p['rank']} is {len(p['text'])} chars"
-
-    def test_generate_posts_all_content_types(self):
-        for ct in ("opinion", "story", "debate", "howto", "list", "question", "news", "meme"):
-            posts = generate_posts("AI", ct, 1)
-            assert len(posts) == 1
-            assert posts[0]["content_type"] != ""
-
-    def test_generate_posts_invalid_type_falls_back(self):
-        posts = generate_posts("AI", "nonexistent", 1)
-        assert len(posts) == 1  # Falls back to debate
-
-    def test_analyze_trends_single_query(self):
-        data = {
-            "query": "AI",
-            "posts": [
-                {"text": "post1", "heat_score": 100, "like_count": 50, "reply_count": 10, "repost_count": 5},
-                {"text": "post2", "heat_score": 50, "like_count": 20, "reply_count": 5, "repost_count": 2},
-            ],
-        }
-        result = analyze_trends_and_generate(data, count=2)
-        assert "analysis" in result
-        assert "generated_posts" in result
-        assert "publish_ready" in result
-        assert result["analysis"]["total_posts_analyzed"] == 2
-
-    def test_analyze_trends_multi_query(self):
-        data = {
-            "results": {
-                "AI": {"posts": [{"text": "ai", "heat_score": 100, "like_count": 10, "reply_count": 5, "repost_count": 2}]},
-                "ML": {"posts": [{"text": "ml", "heat_score": 50, "like_count": 5, "reply_count": 2, "repost_count": 1}]},
-            }
-        }
-        result = analyze_trends_and_generate(data, count=2)
-        assert result["analysis"]["total_posts_analyzed"] == 2
-
-    def test_analyze_trends_empty_returns_error(self):
-        result = analyze_trends_and_generate({"posts": []})
-        assert "error" in result
+from trend_pulse.content.briefing import (
+    get_content_brief,
+    get_scoring_guide,
+    get_review_checklist,
+    get_reel_guide,
+    _detect_language,
+)
 
 
 # ── Adapter ──
@@ -93,190 +21,244 @@ class TestAdapter:
     def test_platform_specs_has_3_platforms(self):
         assert set(PLATFORM_SPECS.keys()) == {"threads", "instagram", "facebook"}
 
-    def test_adapt_for_threads_max_500(self):
-        result = adapt_for_threads("AI", "Hook", ["Point1", "Point2", "Point3"], "CTA")
+    def test_platform_specs_bilingual(self):
+        for name, spec in PLATFORM_SPECS.items():
+            assert isinstance(spec["format"], dict), f"{name} format should be bilingual dict"
+            assert "zh-TW" in spec["format"]
+            assert "en" in spec["format"]
+
+    def test_get_platform_specs_single_en(self):
+        result = get_platform_specs("threads", "en")
         assert result["platform"] == "threads"
-        assert result["chars"] <= 500
+        assert isinstance(result["format"], str)
+        assert "Short text" in result["format"]
 
-    def test_adapt_for_instagram_has_carousel(self):
-        result = adapt_for_instagram("AI", "Hook", ["P1", "P2", "P3", "P4"], "CTA")
-        assert result["platform"] == "instagram"
-        assert result["post_type"] == "carousel"
-        assert len(result["carousel_slides"]) >= 3
-        assert result["chars"] <= 2200
+    def test_get_platform_specs_single_zh(self):
+        result = get_platform_specs("threads", "zh-TW")
+        assert result["platform"] == "threads"
+        assert "短文字" in result["format"]
 
-    def test_adapt_for_instagram_single_image(self):
-        result = adapt_for_instagram("AI", "Hook", ["P1", "P2"], "CTA")
-        assert result["post_type"] == "single_image"
-
-    def test_adapt_for_facebook_long_form(self):
-        result = adapt_for_facebook("AI", "Hook", ["P1", "P2"], "CTA")
-        assert result["platform"] == "facebook"
-        assert result["post_type"] == "long_text_with_image"
-
-    def test_generate_hashtags_returns_list(self):
-        tags = generate_hashtags("AI工具", count=10)
-        assert isinstance(tags, list)
-        assert len(tags) <= 10
-        assert all(t.startswith("#") for t in tags)
-
-    def test_generate_hashtags_no_duplicates(self):
-        tags = generate_hashtags("AI", count=15)
-        assert len(tags) == len(set(tags))
-
-    def test_generate_elaboration_is_string(self):
-        result = generate_elaboration("某個重點", "AI")
-        assert isinstance(result, str)
-        assert len(result) > 10
-
-    def test_generate_image_prompt_3_platforms(self):
-        for platform in ("threads", "instagram", "facebook"):
-            prompt = generate_image_prompt("AI", platform)
-            assert "style" in prompt
-            assert "prompt" in prompt
-            assert "dimensions" in prompt
-
-    def test_quote_card_html_contains_text(self):
-        html = generate_quote_card_html("測試金句", author="Test")
-        assert "測試金句" in html
-        assert "Test" in html
-        assert "<!DOCTYPE html>" in html
-
-    def test_quote_card_html_themes(self):
-        for theme in ("dark", "light", "gradient", "warm"):
-            html = generate_quote_card_html("test", theme=theme)
-            assert "<!DOCTYPE html>" in html
-
-    def test_quote_card_html_no_author(self):
-        html = generate_quote_card_html("test", author="")
-        assert "author" not in html.lower() or 'class="author"' not in html
-
-    def test_reel_script_educational(self):
-        script = generate_reel_script("AI", "educational", 30)
-        assert script["duration_seconds"] == 30
-        assert len(script["scenes"]) >= 4
-        assert "music_suggestion" in script
-        assert "editing_notes" in script
-        assert "caption_for_post" in script
-
-    def test_reel_script_storytelling(self):
-        script = generate_reel_script("AI", "storytelling", 30)
-        assert len(script["scenes"]) >= 4
-        assert script["scenes"][0]["type"] == "HOOK"
-
-    def test_reel_script_listicle(self):
-        script = generate_reel_script("AI", "listicle", 30)
-        assert len(script["scenes"]) >= 5  # 5 points + hook + CTA
-
-    def test_full_pipeline_returns_packages(self):
-        result = full_pipeline("AI", "debate", 2)
-        assert "packages" in result
-        assert result["total_packages"] == 2
-        assert result["topic"] == "AI"
-
-    def test_full_pipeline_package_structure(self):
-        result = full_pipeline("AI", "opinion", 1)
-        pkg = result["packages"][0]
-        assert "platforms" in pkg
-        assert set(pkg["platforms"].keys()) == {"threads", "instagram", "facebook"}
-        assert "media" in pkg
-        assert "cross_post_json" in pkg
-        assert "scheduling" in pkg
-        assert "viral_score" in pkg
-        assert "grade" in pkg
+    def test_get_platform_specs_all(self):
+        result = get_platform_specs("", "en")
+        assert set(result.keys()) == {"threads", "instagram", "facebook"}
+        for name, spec in result.items():
+            assert isinstance(spec["format"], str)
 
 
-# ── Reviewer ──
+# ── Briefing: Content Brief ──
 
 
-class TestReviewer:
-    def test_platform_limits(self):
-        assert PLATFORM_LIMITS["threads"] == 500
-        assert PLATFORM_LIMITS["instagram"] == 2200
-        assert PLATFORM_LIMITS["facebook"] == 63206
+class TestBriefing:
+    def test_detect_language_chinese(self):
+        assert _detect_language("AI工具") == "zh-TW"
 
-    def test_review_returns_required_keys(self):
-        result = review("測試貼文", "threads")
-        assert "verdict" in result
-        assert "scores" in result
-        assert "issues" in result
-        assert "platform" in result
-        assert "char_count" in result
-        assert "char_limit" in result
+    def test_detect_language_english(self):
+        assert _detect_language("AI tools") == "en"
 
-    def test_review_pass_for_good_post(self):
-        text = ("99% 的人不知道的AI真相？\n\n"
-                "你覺得AI好用嗎？但是很多人持不同意見！\n\n"
-                "最新研究顯示：\n1. 第一點\n2. 第二點\n\n"
-                "---\n你怎麼看？留言討論")
-        result = review(text, "threads")
-        # Should have decent scores
-        assert result["scores"]["overall"] >= 50
+    def test_detect_language_japanese(self):
+        assert _detect_language("AIツール") == "ja"
 
-    def test_review_fail_for_short_text(self):
-        result = review("短", "threads")
-        assert result["verdict"] == "fail"
+    def test_get_content_brief_basic(self):
+        brief = get_content_brief("AI tools", "debate", "threads")
+        assert brief["topic"] == "AI tools"
+        assert brief["content_type"] == "debate"
+        assert brief["language"] == "en"
+        assert brief["char_limit"] == 500
+        assert len(brief["hook_examples"]) > 0
+        assert len(brief["cta_examples"]) > 0
 
-    def test_review_char_limit_critical(self):
-        text = "x" * 501
-        result = review(text, "threads")
-        issues = [i for i in result["issues"] if i["type"] == "char_limit"]
-        assert len(issues) == 1
-        assert issues[0]["severity"] == "critical"
+    def test_get_content_brief_zh(self):
+        brief = get_content_brief("AI工具", "debate", "threads")
+        assert brief["language"] == "zh-TW"
 
-    def test_review_no_char_limit_issue_for_ig(self):
-        text = "x" * 501
-        result = review(text, "instagram")
-        issues = [i for i in result["issues"] if i["type"] == "char_limit"]
-        assert len(issues) == 0
+    def test_get_content_brief_explicit_lang(self):
+        brief = get_content_brief("AI", "debate", "threads", lang="en")
+        assert brief["language"] == "en"
 
-    def test_review_missing_cta_detected(self):
-        text = "這是一段沒有行動呼籲的文字。\n\n就這樣。"
-        result = review(text, "threads")
-        issues = [i for i in result["issues"] if i["type"] == "missing_cta"]
-        assert len(issues) == 1
+    def test_get_content_brief_has_patent_strategies(self):
+        brief = get_content_brief("AI", "debate", "threads")
+        assert len(brief["patent_strategies"]) == 5
 
-    def test_review_cta_present_not_flagged(self):
-        text = "內容\n\n---\n你的看法呢？歡迎留言討論"
-        result = review(text, "threads")
-        issues = [i for i in result["issues"] if i["type"] == "missing_cta"]
-        assert len(issues) == 0
+    def test_get_content_brief_has_scoring_dimensions(self):
+        brief = get_content_brief("AI", "debate", "threads")
+        dims = brief["scoring_dimensions"]
+        assert set(dims.keys()) == {
+            "hook_power", "engagement_trigger", "conversation_durability",
+            "velocity_potential", "format_score",
+        }
 
-    def test_review_weak_hook_detected(self):
-        text = "短\n\n其他內容"
-        result = review(text, "threads")
-        issues = [i for i in result["issues"] if i["type"] == "weak_hook"]
-        assert len(issues) == 1
+    def test_get_content_brief_quality_gate(self):
+        gate = get_content_brief("AI", "debate", "threads")["quality_gate"]
+        assert gate["min_overall"] == 70
+        assert gate["min_conversation"] == 55
 
-    def test_review_auto_fix_adds_cta(self):
-        text = "這是一段沒有CTA的文字。"
-        result = review(text, "threads", auto_fix=True)
-        if "fixed_text" in result:
-            assert "留言" in result["fixed_text"] or "討論" in result["fixed_text"]
+    def test_get_content_brief_hook_examples_localized(self):
+        brief_en = get_content_brief("AI", "debate", "threads", lang="en")
+        brief_zh = get_content_brief("AI工具", "debate", "threads", lang="zh-TW")
+        en_hooks = [h["example"] for h in brief_en["hook_examples"]]
+        assert any("people" in h or "truth" in h or "wrong" in h for h in en_hooks)
+        zh_hooks = [h["example"] for h in brief_zh["hook_examples"]]
+        assert any("的" in h or "真相" in h or "人" in h for h in zh_hooks)
 
-    def test_review_auto_fix_adds_question(self):
-        text = ("這是一段沒有問題的文字。\n\n沒有爭議觀點。")
-        result = review(text, "threads", auto_fix=True)
-        if "fixed_text" in result:
-            assert "？" in result["fixed_text"] or "怎麼看" in result["fixed_text"]
 
-    def test_review_auto_fix_trims_text(self):
-        text = "x" * 510
-        result = review(text, "threads", auto_fix=True)
-        if "fixed_text" in result:
-            # Auto-fix trims to limit, but may also append CTA/question
-            # The char_limit trim happens first, then CTA is appended
-            # So we just check the original trim was applied
-            assert result["fixed_text"] != text  # Something changed
+# ── Briefing: Scoring Guide ──
 
-    def test_review_auto_fix_rescores(self):
-        text = "短文沒有結構"
-        result = review(text, "threads", auto_fix=True)
-        if "fixed_scores" in result:
-            assert result["fixed_scores"]["overall"] >= result["scores"]["overall"]
 
-    def test_review_all_platforms(self):
-        for platform in ("threads", "instagram", "facebook"):
-            result = review("測試", platform)
-            assert result["platform"] == platform
-            assert result["char_limit"] == PLATFORM_LIMITS[platform]
+class TestScoringGuide:
+    def test_scoring_guide_basic(self):
+        guide = get_scoring_guide("en")
+        assert "dimensions" in guide
+        assert "grade_thresholds" in guide
+        assert "quality_gate" in guide
+        assert "instructions" in guide
+
+    def test_scoring_guide_5_dimensions(self):
+        dims = get_scoring_guide("en")["dimensions"]
+        assert set(dims.keys()) == {
+            "hook_power", "engagement_trigger", "conversation_durability",
+            "velocity_potential", "format_score",
+        }
+
+    def test_scoring_guide_dimension_structure(self):
+        dims = get_scoring_guide("en")["dimensions"]
+        for name, dim in dims.items():
+            assert "weight" in dim, f"{name} missing weight"
+            assert "patent_basis" in dim, f"{name} missing patent_basis"
+            assert "description" in dim, f"{name} missing description"
+            assert "evaluate" in dim, f"{name} missing evaluate"
+            assert "high_signals" in dim, f"{name} missing high_signals"
+            assert "low_signals" in dim, f"{name} missing low_signals"
+            assert len(dim["evaluate"]) >= 3
+
+    def test_scoring_guide_weights_sum_to_1(self):
+        dims = get_scoring_guide("en")["dimensions"]
+        total = sum(d["weight"] for d in dims.values())
+        assert abs(total - 1.0) < 0.001
+
+    def test_scoring_guide_grade_thresholds(self):
+        grades = get_scoring_guide("en")["grade_thresholds"]
+        assert grades["S"]["min"] == 90
+        assert grades["A"]["min"] == 80
+        assert grades["B"]["min"] == 70
+        assert grades["C"]["min"] == 55
+        assert grades["D"]["min"] == 0
+
+    def test_scoring_guide_zh(self):
+        guide = get_scoring_guide("zh-TW")
+        dims = guide["dimensions"]
+        assert "注意力" in dims["hook_power"]["description"]
+        assert "互動" in dims["engagement_trigger"]["description"]
+
+    def test_scoring_guide_auto_lang(self):
+        guide = get_scoring_guide("auto", topic="AI工具")
+        assert "注意力" in guide["dimensions"]["hook_power"]["description"]
+
+    def test_scoring_guide_auto_lang_english(self):
+        guide = get_scoring_guide("auto", topic="AI tools")
+        assert "attention" in guide["dimensions"]["hook_power"]["description"]
+
+
+# ── Briefing: Review Checklist ──
+
+
+class TestReviewChecklist:
+    def test_review_checklist_basic(self):
+        cl = get_review_checklist("threads", "en")
+        assert cl["platform"] == "threads"
+        assert cl["char_limit"] == 500
+        assert "quality_gate" in cl
+        assert "checklist" in cl
+        assert "instructions" in cl
+
+    def test_review_checklist_has_items(self):
+        cl = get_review_checklist("threads", "en")
+        assert len(cl["checklist"]) >= 7
+
+    def test_review_checklist_item_structure(self):
+        cl = get_review_checklist("threads", "en")
+        for item in cl["checklist"]:
+            assert "id" in item
+            assert "category" in item
+            assert "severity" in item
+            assert "check" in item
+            assert "pass_criteria" in item
+            assert "auto_fixable" in item
+            assert "fix_method" in item
+
+    def test_review_checklist_has_critical_items(self):
+        cl = get_review_checklist("threads", "en")
+        critical = [i for i in cl["checklist"] if i["severity"] == "critical"]
+        assert len(critical) >= 3
+
+    def test_review_checklist_platform_limits(self):
+        for platform, limit in [("threads", 500), ("instagram", 2200), ("facebook", 63206)]:
+            cl = get_review_checklist(platform, "en")
+            assert cl["char_limit"] == limit
+
+    def test_review_checklist_zh(self):
+        cl = get_review_checklist("threads", "zh-TW")
+        assert "字" in cl["checklist"][0]["check"]
+
+    def test_review_checklist_verdict_rules(self):
+        cl = get_review_checklist("threads", "en")
+        assert "pass" in cl["verdict_rules"]
+        assert "fail" in cl["verdict_rules"]
+
+
+# ── Briefing: Reel Guide ──
+
+
+class TestReelGuide:
+    def test_reel_guide_educational(self):
+        guide = get_reel_guide("educational", 30, "en")
+        assert guide["style"] == "educational"
+        assert guide["target_duration"] == 30
+        assert len(guide["scene_structure"]) >= 4
+        assert "instructions" in guide
+        assert "music_suggestion" in guide
+        assert "editing_tips" in guide
+
+    def test_reel_guide_storytelling(self):
+        guide = get_reel_guide("storytelling", 30, "en")
+        scene_types = [s["type"] for s in guide["scene_structure"]]
+        assert "HOOK" in scene_types
+        assert "CONFLICT" in scene_types
+        assert "RESOLUTION" in scene_types
+
+    def test_reel_guide_listicle(self):
+        guide = get_reel_guide("listicle", 30, "en")
+        scene_types = [s["type"] for s in guide["scene_structure"]]
+        assert "HOOK" in scene_types
+        assert "POINTS" in scene_types
+        assert "CTA" in scene_types
+
+    def test_reel_guide_scene_structure(self):
+        guide = get_reel_guide("educational", 30, "en")
+        for scene in guide["scene_structure"]:
+            assert "type" in scene
+            assert "time_pct" in scene
+            assert "purpose" in scene
+            assert "visual_guidance" in scene
+            assert "tips" in scene
+            assert "duration_seconds" in scene
+            assert scene["duration_seconds"] >= 1
+
+    def test_reel_guide_timing_sums_reasonable(self):
+        guide = get_reel_guide("educational", 30, "en")
+        total = sum(s["duration_seconds"] for s in guide["scene_structure"])
+        assert 25 <= total <= 35
+
+    def test_reel_guide_zh(self):
+        guide = get_reel_guide("educational", 30, "zh-TW")
+        assert any("秒" in t or "注意力" in t or "觀眾" in t
+                    for s in guide["scene_structure"] for t in s["tips"])
+
+    def test_reel_guide_different_durations(self):
+        for dur in (15, 30, 60):
+            guide = get_reel_guide("educational", dur, "en")
+            assert guide["target_duration"] == dur
+
+    def test_reel_guide_auto_lang(self):
+        guide = get_reel_guide("educational", 30, "auto", topic="AI工具")
+        assert any("秒" in t or "注意力" in t or "觀眾" in t
+                    for s in guide["scene_structure"] for t in s["tips"])

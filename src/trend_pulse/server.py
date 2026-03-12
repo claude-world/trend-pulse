@@ -117,42 +117,49 @@ async def take_snapshot(
 
 
 # ═══════════════════════════════════════════════════════
-# Content Generation + Review Tools
+# Content Guide Tools — structured data for LLM judgment
 # ═══════════════════════════════════════════════════════
 
 
 @mcp.tool()
-async def generate_viral_posts(
+async def get_content_brief(
     topic: str,
     content_type: str = "debate",
-    count: int = 5,
+    platform: str = "threads",
+    lang: str = "auto",
 ) -> str:
-    """Generate viral posts scored against Meta's 7 ranking patents.
+    """Get a structured writing brief for creating viral content.
+
+    Returns hook examples, patent strategies, scoring dimensions, platform specs,
+    and content type guidance. Use this data to craft original posts — the LLM
+    creates the content, this tool provides the optimization framework.
 
     Args:
-        topic: Subject to generate posts about (e.g. "AI工具", "Claude Code")
+        topic: Subject to create content about (e.g. "AI tools", "Claude Code")
         content_type: Post style — opinion, story, debate, howto, list, question, news, meme
-        count: Number of posts to generate (default: 5)
+        platform: Target platform — threads (500 chars), instagram (2200), facebook (63206)
+        lang: Language — "auto" (detect from topic), "en", "zh-TW"
 
     Returns:
-        JSON with ranked posts, each including text, 5D patent scores, and grade (S/A/B/C/D)
+        JSON with hook examples, CTA examples, patent strategies, scoring dimensions,
+        platform specs, content type guidance, char limit, and quality gate thresholds
     """
-    from .content.generator import generate_posts
+    from .content.briefing import get_content_brief as _brief
 
-    posts = generate_posts(topic, content_type, count)
-    result = {
-        "topic": topic,
-        "content_type": content_type,
-        "count": len(posts),
-        "posts": posts,
-        "publish_ready": [p for p in posts if p["scores"]["overall"] >= 70],
-    }
+    result = _brief(topic, content_type, platform, lang)
     return json.dumps(result, indent=2, ensure_ascii=False)
 
 
 @mcp.tool()
-async def score_viral_post(text: str) -> str:
-    """Score a post on 5 patent-derived dimensions.
+async def get_scoring_guide(
+    lang: str = "auto",
+    topic: str = "",
+) -> str:
+    """Get the 5-dimension scoring framework for evaluating posts.
+
+    Returns evaluation criteria, high/low signal examples, and grade thresholds
+    for each patent-derived dimension. The LLM uses this guide to score posts
+    itself — no regex heuristics.
 
     Dimensions (weighted):
     - Hook Power 25% (EdgeRank Weight + Andromeda)
@@ -162,99 +169,104 @@ async def score_viral_post(text: str) -> str:
     - Format Score 15% (Multi-modal Indexing)
 
     Args:
-        text: The post content to score
+        lang: Language for criteria text — "auto", "en", "zh-TW"
+        topic: Optional topic hint for auto language detection
 
     Returns:
-        JSON with overall score (0-100), grade (S/A/B/C/D), 5 dimension scores, and suggestions
+        JSON with 5 dimensions (weight, criteria, signals), grade thresholds, and instructions
     """
-    from .patents.scorer import score_post as _score
+    from .content.briefing import get_scoring_guide as _guide
 
-    result = _score(text)
-    result["text_preview"] = text[:80] + "..." if len(text) > 80 else text
+    result = _guide(lang, topic)
     return json.dumps(result, indent=2, ensure_ascii=False)
 
 
 @mcp.tool()
-async def generate_content(
-    topic: str,
-    content_type: str = "debate",
-    count: int = 3,
+async def get_platform_specs(
+    platform: str = "",
+    lang: str = "zh-TW",
 ) -> str:
-    """Generate complete 3-platform content package from a single topic.
+    """Get platform specifications for content adaptation.
 
-    Produces adapted content for Threads + Instagram + Facebook, including:
-    - Platform-specific text (respecting char limits)
-    - Image prompts for AI generation
-    - Carousel slide specs for IG
-    - Quote card HTML
-    - Reel script with scene breakdown
-    - Optimal posting schedule
+    Returns character limits, content strengths, algorithm priorities,
+    best posting times, and format guidelines for each platform.
+    Use this to adapt content for specific platforms.
 
     Args:
-        topic: Subject to create content about
-        content_type: Post style — opinion, story, debate, howto, list, question, news, meme
-        count: Number of content packages (default: 3)
+        platform: Platform name — threads, instagram, facebook (empty = all platforms)
+        lang: Language for descriptions — "en" or "zh-TW" (default: "zh-TW")
 
     Returns:
-        JSON with complete cross-platform content packages
+        JSON with platform specs (char limits, strengths, format tips, algo priority, best times)
     """
-    from .content.adapter import full_pipeline
+    from .content.adapter import get_platform_specs as _specs
 
-    result = full_pipeline(topic, content_type, count)
+    result = _specs(platform, lang)
     return json.dumps(result, indent=2, ensure_ascii=False)
 
 
 @mcp.tool()
-async def review_content(
-    text: str,
+async def get_review_checklist(
     platform: str = "threads",
-    auto_fix: bool = False,
+    lang: str = "auto",
+    topic: str = "",
 ) -> str:
-    """Review content against patent scores and platform compliance.
+    """Get a structured review checklist for evaluating content quality.
 
-    Quality gate checks:
-    - Viral Score >= 70
-    - Conversation Durability >= 55
-    - Hook effectiveness (first line 10-45 chars)
-    - CTA presence and clarity
-    - Character count within platform limits
+    Returns platform limits, quality thresholds, and detailed checklist items.
+    The LLM reviews the post against this checklist itself — the tool only
+    provides criteria, not judgment.
+
+    Checklist covers:
+    - Character limit compliance
+    - Overall score quality gate (>= 70)
+    - Conversation durability gate (>= 55)
+    - Hook effectiveness
+    - CTA presence
+    - Question/engagement triggers
+    - Format/readability
 
     Args:
-        text: The post content to review
         platform: Target platform — threads (500 chars), instagram (2200), facebook (63206)
-        auto_fix: If true, automatically fix issues (trim text, add CTA, strengthen hook)
+        lang: Language for checklist text — "auto", "en", "zh-TW"
+        topic: Optional topic hint for auto language detection
 
     Returns:
-        JSON with verdict (pass/fail), 5D scores, issues list, and optionally fixed text
+        JSON with platform limits, quality gate thresholds, checklist items, and verdict rules
     """
-    from .content.reviewer import review
+    from .content.briefing import get_review_checklist as _checklist
 
-    result = review(text, platform, auto_fix)
+    result = _checklist(platform, lang, topic)
     return json.dumps(result, indent=2, ensure_ascii=False)
 
 
 @mcp.tool()
-async def generate_reel_script(
-    topic: str,
+async def get_reel_guide(
     style: str = "educational",
     duration: int = 30,
+    lang: str = "auto",
+    topic: str = "",
 ) -> str:
-    """Generate a Reels/Short video script with timing and visual cues.
+    """Get a structured guide for creating Reels/Short video scripts.
 
-    Optimized for Instagram Reels algorithm (completion rate priority).
+    Returns scene structure, timing allocations, visual guidance, and editing tips.
+    The LLM fills in original captions, voiceover, and visual directions.
+
+    Styles: educational (problem→solution), storytelling (conflict→resolution),
+    listicle (numbered points)
 
     Args:
-        topic: Subject of the reel
         style: Script style — educational, storytelling, listicle
         duration: Target duration in seconds (default: 30)
+        lang: Language for guide text — "auto", "en", "zh-TW"
+        topic: Optional topic hint for auto language detection
 
     Returns:
-        JSON with title, scene-by-scene breakdown (timing, visuals, captions, voiceover),
-        music suggestion, editing notes, and post caption
+        JSON with scene structure, timing, music suggestion, editing tips, and instructions
     """
-    from .content.adapter import generate_reel_script as _gen_reel
+    from .content.briefing import get_reel_guide as _guide
 
-    result = _gen_reel(topic, style, duration)
+    result = _guide(style, duration, lang, topic)
     return json.dumps(result, indent=2, ensure_ascii=False)
 
 

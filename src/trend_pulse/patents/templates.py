@@ -106,6 +106,94 @@ CONTENT_TYPES = {
 }
 
 
+# ═══════════════════════════════════════════════════════
+# English Templates
+# ═══════════════════════════════════════════════════════
+
+HOOK_TEMPLATES_EN = {
+    "curiosity_gap": {
+        "patent": "EdgeRank Weight + Andromeda Real-time",
+        "templates": [
+            "99% of people get {topic} completely wrong",
+            "I spent {time} figuring out {topic}, and discovered...",
+            "What you think about {topic} vs what's actually true",
+            "The uncomfortable truth about {topic} nobody talks about",
+            "If you're still doing {topic} the old way, this will change everything",
+            "The biggest {topic} trap — 99% of people fall for it",
+            "After {time} researching {topic}, I overturned all my conclusions",
+        ],
+    },
+    "controversy": {
+        "patent": "Conversation Durability + Interest Vector",
+        "templates": [
+            "I know this will upset many, but {topic}...",
+            "Everyone's hyping {topic}, but I disagree...",
+            "Sorry, but {topic} is a false premise",
+            "Why I'm telling you to stop doing {topic}",
+            "An unpopular opinion about {topic}",
+            "The way most people do {topic} is a complete waste of time",
+            "The one thing no {topic} course will ever tell you",
+        ],
+    },
+    "story": {
+        "patent": "EdgeRank Affinity + Interaction Flywheel",
+        "templates": [
+            "This time last year, I was struggling with {topic}...",
+            "The moment that changed how I see {topic}",
+            "Starting {topic} from zero — what I learned after {time}",
+            "Three years ago I made a decision about {topic}...",
+            "I almost gave up on {topic}, until...",
+            "A real story about {topic} (not motivational fluff)",
+            "That day {topic} completely broke me — looking back now...",
+        ],
+    },
+    "data_driven": {
+        "patent": "EdgeRank Weight (numeric hooks CTR +37%)",
+        "templates": [
+            "After {time} of {topic}, here are my {count} hard-won lessons",
+            "The {count} most common {topic} mistakes beginners make (with fixes)",
+            "One chart that explains the entire {topic} framework",
+            "If you're starting {topic}, read these {count} points first",
+            "The {count} hidden costs of {topic} nobody mentions",
+            "{count} key {topic} metrics — how many have you hit?",
+            "I tested {count} {topic} methods — only this one works",
+        ],
+    },
+    "engagement_trigger": {
+        "patent": "Dear Algo Active Signal + Affinity",
+        "templates": [
+            "Don't scroll past this — this {topic} detail matters",
+            "What's your take on {topic}? Drop a comment",
+            "Share this with someone who needs to hear about {topic}",
+            "If this helped you, like it so more people can see it",
+            "The last point is the most important — about {topic}",
+            "Which side of {topic} are you on? Tell me below",
+            "After reading this, your view on {topic} will change",
+        ],
+    },
+}
+
+BODY_TEMPLATES_EN = [
+    "\n\nI've been deep-diving into {topic} and found a blind spot most people miss:\n\nThe problem isn't that you're not working hard enough — it's that the direction is fundamentally wrong.\n\nHere's my core framework:",
+    "\n\nToo many people around me have fallen into the {topic} trap.\n\nIt's not a skill problem — it's a mindset problem.\n\nHere are the key turning points that changed my thinking:",
+    "\n\nI've spent a long time studying {topic}.\n\nAnd I reached a counter-intuitive conclusion:\n\nThe direction everyone's chasing might have been wrong from the start.",
+    "\n\nLet me share a real case about {topic}.\n\nNot trying to create anxiety — just hoping more people can avoid this pitfall.",
+    "\n\nOn the {topic} journey, I've taken too many wrong turns.\n\nLet me lay it all out today — every pitfall you avoid is a win.",
+    "\n\nMany people ask me how to get started with {topic}.\n\nHonestly, getting started isn't hard — what's hard is staying on the right track.\n\nThe most important thing is getting the first step right:",
+    "\n\nThe truth about {topic} is harsher than you think.\n\nBut precisely because it's harsh, those who know early will win.",
+]
+
+CTA_TEMPLATES_EN = [
+    "\n\n---\nWhat do you think? Share your thoughts below",
+    "\n\n---\nHad a similar experience? Drop a comment",
+    "\n\n---\nFound this helpful? Share it with someone who needs it",
+    "\n\n---\nFollow me for more insights like this",
+    "\n\n---\nAgree? Like. Disagree? Tell me why",
+    "\n\n---\nWhich point resonated most? Let me know",
+    "\n\n---\nSave this for later — you'll thank yourself",
+]
+
+
 def fill_template(template: str, topic: str) -> str:
     """Fill in template variables with topic and randomized values."""
     replacements = {
@@ -117,3 +205,23 @@ def fill_template(template: str, topic: str) -> str:
     for k, v in replacements.items():
         result = result.replace(k, v)
     return result
+
+
+def fill_template_en(template: str, topic: str) -> str:
+    """Fill in English template variables with topic and randomized values."""
+    replacements = {
+        "{topic}": topic,
+        "{time}": random.choice(["3 months", "6 months", "1 year", "2 years", "3 years", "5 years"]),
+        "{count}": str(random.randint(3, 9)),
+    }
+    result = template
+    for k, v in replacements.items():
+        result = result.replace(k, v)
+    return result
+
+
+def get_templates(lang: str = "zh-TW") -> tuple[dict, list, list]:
+    """Return (hook_templates, body_templates, cta_templates) for the given language."""
+    if lang == "en":
+        return HOOK_TEMPLATES_EN, BODY_TEMPLATES_EN, CTA_TEMPLATES_EN
+    return HOOK_TEMPLATES, BODY_TEMPLATES, CTA_TEMPLATES
