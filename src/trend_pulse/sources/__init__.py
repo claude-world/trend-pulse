@@ -5,6 +5,14 @@ from .bluesky import BlueskySource
 from .wikipedia import WikipediaSource
 from .github_trending import GitHubTrendingSource
 from .pypi import PyPISource
+from .google_news import GoogleNewsSource
+from .lobsters import LobstersSource
+from .devto import DevToSource
+from .npm import NpmSource
+from .reddit import RedditSource
+from .coingecko import CoinGeckoSource
+from .dockerhub import DockerHubSource
+from .stackoverflow import StackOverflowSource
 
 ALL_SOURCES = [
     GoogleTrendsSource,
@@ -14,6 +22,14 @@ ALL_SOURCES = [
     WikipediaSource,
     GitHubTrendingSource,
     PyPISource,
+    GoogleNewsSource,
+    LobstersSource,
+    DevToSource,
+    NpmSource,
+    RedditSource,
+    CoinGeckoSource,
+    DockerHubSource,
+    StackOverflowSource,
 ]
 
 __all__ = [
@@ -24,5 +40,13 @@ __all__ = [
     "WikipediaSource",
     "GitHubTrendingSource",
     "PyPISource",
+    "GoogleNewsSource",
+    "LobstersSource",
+    "DevToSource",
+    "NpmSource",
+    "RedditSource",
+    "CoinGeckoSource",
+    "DockerHubSource",
+    "StackOverflowSource",
     "ALL_SOURCES",
 ]

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import time
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from typing import Any
 
 
@@ -20,9 +19,24 @@ class TrendItem:
     category: str = ""  # e.g. "tech", "news", "finance"
     published: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
+    direction: str = ""  # "rising", "stable", "declining", "new", or "" (unknown)
+    velocity: float = 0.0  # score change per hour
+    previous_score: float = 0.0  # last known score
 
     def to_dict(self) -> dict:
-        return {k: v for k, v in asdict(self).items() if v or k in ("keyword", "score", "source")}
+        return {
+            "keyword": self.keyword,
+            "score": self.score,
+            "source": self.source,
+            "url": self.url,
+            "traffic": self.traffic,
+            "category": self.category,
+            "published": self.published,
+            "metadata": self.metadata,
+            "direction": self.direction,
+            "velocity": self.velocity,
+            "previous_score": self.previous_score,
+        }
 
 
 class TrendSource(ABC):
