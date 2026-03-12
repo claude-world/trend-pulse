@@ -18,21 +18,7 @@ class StackOverflowSource(TrendSource):
 
     URL = "https://api.stackexchange.com/2.3/questions"
 
-    async def fetch_trending(self, geo: str = "", count: int = 20) -> list[TrendItem]:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.get(
-                self.URL,
-                params={
-                    "order": "desc",
-                    "sort": "hot",
-                    "site": "stackoverflow",
-                    "pagesize": count,
-                    "filter": "default",
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-
+    def _parse_questions(self, data: dict) -> list[TrendItem]:
         items: list[TrendItem] = []
         for item in data.get("items", []):
             score_val = item.get("score", 0)
@@ -52,5 +38,39 @@ class StackOverflowSource(TrendSource):
                     "owner": item.get("owner", {}).get("display_name", ""),
                 },
             ))
-
         return items
+
+    async def fetch_trending(self, geo: str = "", count: int = 20) -> list[TrendItem]:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                self.URL,
+                params={
+                    "order": "desc",
+                    "sort": "hot",
+                    "site": "stackoverflow",
+                    "pagesize": count,
+                    "filter": "default",
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
+        return self._parse_questions(data)
+
+    async def search(self, query: str, geo: str = "") -> list[TrendItem]:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                "https://api.stackexchange.com/2.3/search",
+                params={
+                    "intitle": query,
+                    "order": "desc",
+                    "sort": "relevance",
+                    "site": "stackoverflow",
+                    "pagesize": 20,
+                    "filter": "default",
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
+        return self._parse_questions(data)

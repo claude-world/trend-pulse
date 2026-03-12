@@ -15,17 +15,8 @@ class DevToSource(TrendSource):
 
     API_URL = "https://dev.to/api/articles"
 
-    async def fetch_trending(self, geo: str = "", count: int = 20) -> list[TrendItem]:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.get(
-                self.API_URL,
-                params={"top": 1, "per_page": count},
-            )
-            resp.raise_for_status()
-
-        articles = resp.json()
+    def _parse_articles(self, articles: list) -> list[TrendItem]:
         items: list[TrendItem] = []
-
         for article in articles:
             reactions = article.get("public_reactions_count", 0)
             items.append(TrendItem(
@@ -33,7 +24,7 @@ class DevToSource(TrendSource):
                 score=min(reactions / 5, 100),  # 500 reactions = 100
                 source=self.name,
                 url=article.get("url", ""),
-                traffic=f'{reactions} reactions',
+                traffic=f"{reactions} reactions",
                 category="tech",
                 published=article.get("published_at", ""),
                 metadata={
@@ -43,5 +34,26 @@ class DevToSource(TrendSource):
                     "tags": article.get("tag_list", []),
                 },
             ))
-
         return items
+
+    async def fetch_trending(self, geo: str = "", count: int = 20) -> list[TrendItem]:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                self.API_URL,
+                params={"top": 1, "per_page": count},
+            )
+            resp.raise_for_status()
+            articles = resp.json()
+
+        return self._parse_articles(articles)
+
+    async def search(self, query: str, geo: str = "") -> list[TrendItem]:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                self.API_URL,
+                params={"per_page": 20, "tag": query},
+            )
+            resp.raise_for_status()
+            articles = resp.json()
+
+        return self._parse_articles(articles)

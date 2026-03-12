@@ -13,6 +13,9 @@ from .reddit import RedditSource
 from .coingecko import CoinGeckoSource
 from .dockerhub import DockerHubSource
 from .stackoverflow import StackOverflowSource
+from .producthunt import ProductHuntSource
+from .arxiv import ArXivSource
+from .lemmy import LemmySource
 
 ALL_SOURCES = [
     GoogleTrendsSource,
@@ -30,6 +33,9 @@ ALL_SOURCES = [
     CoinGeckoSource,
     DockerHubSource,
     StackOverflowSource,
+    ProductHuntSource,
+    ArXivSource,
+    LemmySource,
 ]
 
 __all__ = [
@@ -48,5 +54,8 @@ __all__ = [
     "CoinGeckoSource",
     "DockerHubSource",
     "StackOverflowSource",
+    "ProductHuntSource",
+    "ArXivSource",
+    "LemmySource",
     "ALL_SOURCES",
 ]

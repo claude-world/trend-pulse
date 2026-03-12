@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.4.0] - 2026-03-12
+
+### Added
+
+- **Search support for 6 new sources** (2/15 → 8/18 search-enabled)
+  - Reddit — `/search.json` with relevance sorting
+  - Stack Overflow — `/2.3/search` with intitle matching
+  - dev.to — tag-based article search
+  - Product Hunt — HTML scraping with JSON-LD parsing (new source)
+  - ArXiv — Atom API full-text search for AI/ML/NLP papers (new source)
+  - Lemmy — lemmy.world federated search (new source)
+- 3 new trending sources: Product Hunt (product), ArXiv (research), Lemmy (community)
+- Shared `_parse_*` helpers in Reddit, dev.to, Stack Overflow to eliminate duplication
+
+### Fixed
+
+- ArXiv API URL `http://` → `https://` (was causing redirect errors)
+- Product Hunt GraphQL 403 → replaced with HTML scraping approach
+- dev.to / ArXiv: `resp.json()`/`resp.text` now read inside `async with` block
+- Lemmy: `metadata["url"]` renamed to `"external_url"` to avoid shadowing `TrendItem.url`
+- ArXiv: removed manual `quote()` that caused double URL-encoding via httpx params
+
+## [0.3.3] - 2026-03-12
+
+### Added
+
+- CF Browser Rendering fallback + `render_page` MCP tool
+
 ## [0.3.2] - 2026-03-12
 
 ### Architecture Change
