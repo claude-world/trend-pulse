@@ -1,6 +1,6 @@
 # trend-pulse
 
-Free trending topics aggregator + viral content generator — 15 sources, zero auth, patent-based scoring.
+Free trending topics aggregator + AI content guides — 15 sources, zero auth, patent-based scoring.
 
 Use as a **Python library**, **CLI tool**, or **MCP server** for Claude Code / AI agents.
 
@@ -140,7 +140,7 @@ Or with uvx (no install needed):
   "mcpServers": {
     "trend-pulse": {
       "command": "uvx",
-      "args": ["trend-pulse[mcp]"],
+      "args": ["--from", "trend-pulse[mcp]", "trend-pulse-server"],
       "type": "stdio"
     }
   }

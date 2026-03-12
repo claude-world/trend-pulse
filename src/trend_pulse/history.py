@@ -70,13 +70,15 @@ class TrendDB:
         self, keyword: str, days: int = 30, source: str = ""
     ) -> list[dict]:
         """Get historical snapshots for a keyword."""
+        # Escape LIKE wildcards in user input to prevent injection
+        safe_keyword = keyword.replace("%", "\\%").replace("_", "\\_")
         query = """
             SELECT timestamp, source, keyword, score, traffic_raw, url, category, metadata_json
             FROM snapshots
-            WHERE keyword LIKE ?
+            WHERE keyword LIKE ? ESCAPE '\\'
             AND timestamp >= datetime('now', ?)
         """
-        params: list = [f"%{keyword}%", f"-{days} days"]
+        params: list = [f"%{safe_keyword}%", f"-{days} days"]
         if source:
             query += " AND source = ?"
             params.append(source)

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "trend-pulse"
-version = "0.3.0"
-description = "Free trending topics aggregator with content generation + patent-based review. MCP Server + CLI + Python library."
+version = "0.3.3"
+description = "Free trending topics aggregator + AI content guides — 15 sources, zero auth, patent-based scoring. MCP Server + CLI + Python library."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
@@ -31,6 +31,7 @@ Issues = "https://github.com/claude-world/trend-pulse/issues"
 mcp = ["mcp[cli]>=1.0"]
 google = ["trendspyg", "pytrends>=4.9"]
 content = []  # Pure Python + httpx (already in core deps)
+browser = []  # CF Browser Rendering — uses httpx (already in core). Needs CF_ACCOUNT_ID + CF_API_TOKEN env vars.
 all = ["mcp[cli]>=1.0", "trendspyg", "pytrends>=4.9"]
 
 [project.scripts]

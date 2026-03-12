@@ -12,7 +12,7 @@ class TestServerTools:
 
     def test_total_tool_count(self):
         tools = mcp._tool_manager._tools
-        assert len(tools) == 10
+        assert len(tools) == 11
 
     def test_data_tools_present(self):
         tools = mcp._tool_manager._tools
@@ -126,7 +126,15 @@ class TestServerToolExecution:
         assert data["style"] == "listicle"
 
 
+class TestBrowserTool:
+    """Test render_page tool registration."""
+
+    def test_render_page_tool_present(self):
+        tools = mcp._tool_manager._tools
+        assert "render_page" in tools, "Missing browser tool: render_page"
+
+
 class TestVersion:
-    def test_version_is_032(self):
+    def test_version_is_033(self):
         from trend_pulse import __version__
-        assert __version__ == "0.3.2"
+        assert __version__ == "0.3.3"

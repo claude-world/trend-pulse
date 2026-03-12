@@ -8,3 +8,6 @@ build/
 *.egg
 .mypy_cache/
 .ruff_cache/
+.gemini/
+AGENTS.md
+GEMINI.md

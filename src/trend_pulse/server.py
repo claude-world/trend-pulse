@@ -270,6 +270,63 @@ async def get_reel_guide(
     return json.dumps(result, indent=2, ensure_ascii=False)
 
 
+# ═══════════════════════════════════════════════════════
+# Browser Rendering Tool — optional, requires CF credentials
+# ═══════════════════════════════════════════════════════
+
+
+@mcp.tool()
+async def render_page(
+    url: str,
+    format: str = "markdown",
+) -> str:
+    """Render a JS-heavy page using Cloudflare Browser Rendering.
+
+    Requires CF_ACCOUNT_ID and CF_API_TOKEN environment variables.
+    Returns rendered page content in the requested format.
+
+    Args:
+        url: The page URL to render.
+        format: Output format — "markdown" (clean text), "content" (full HTML),
+                or "json" (AI structured extraction, returns raw page data).
+
+    Returns:
+        JSON with url, format, and rendered content (or error message).
+    """
+    from .sources.browser_renderer import is_available, render_markdown, render_content, extract_json
+
+    if not is_available():
+        return json.dumps({
+            "error": "Not configured. Set CF_ACCOUNT_ID and CF_API_TOKEN environment variables.",
+            "url": url,
+        }, indent=2)
+
+    try:
+        if format == "content":
+            content = await render_content(url)
+        elif format == "json":
+            content = await extract_json(url, "Extract the main structured content from this page.")
+            return json.dumps({
+                "url": url,
+                "format": format,
+                "content": content,
+            }, indent=2, ensure_ascii=False)
+        else:  # default: markdown
+            content = await render_markdown(url)
+
+        return json.dumps({
+            "url": url,
+            "format": format,
+            "content": content,
+        }, indent=2, ensure_ascii=False)
+    except Exception as exc:
+        return json.dumps({
+            "error": str(exc),
+            "url": url,
+            "format": format,
+        }, indent=2)
+
+
 def main():
     mcp.run()
 
