@@ -1,3 +1,3 @@
-"""trend-mcp: Free trending topics aggregator."""
+"""trend-pulse: Free trending topics aggregator."""
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"

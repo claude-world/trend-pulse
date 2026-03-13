@@ -1397,7 +1397,7 @@ wheels = [
 
 [[package]]
 name = "trend-pulse"
-version = "0.3.3"
+version = "0.5.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
