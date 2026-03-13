@@ -267,9 +267,15 @@ All commands return JSON with a unified structure:
 
 Each item has a normalized `score` (0-100) for cross-source comparison.
 
-## Add Your Own Source
+## Custom Sources
+
+Custom sources are simple `TrendSource` subclasses that return `list[TrendItem]`.
+
+- Interface docs: [docs/custom-sources.md](docs/custom-sources.md)
+- Working RSS example: [examples/custom_rss_source.py](examples/custom_rss_source.py)
 
 ```python
+from trend_pulse.aggregator import TrendAggregator
 from trend_pulse.sources.base import TrendSource, TrendItem
 
 class MySource(TrendSource):
@@ -287,15 +293,8 @@ class MySource(TrendSource):
                 url="https://...",
             )
         ]
-```
 
-Then register it:
-
-```python
-from trend_pulse.aggregator import TrendAggregator
-from my_module import MySource
-
-agg = TrendAggregator(sources=[MySource, ...])
+agg = TrendAggregator(sources=[MySource])
 ```
 
 ## Rate Limits
