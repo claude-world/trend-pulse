@@ -1,5 +1,10 @@
 # trend-pulse
 
+[![CI](https://github.com/claude-world/trend-pulse/actions/workflows/ci.yml/badge.svg)](https://github.com/claude-world/trend-pulse/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/trend-pulse)](https://pypi.org/project/trend-pulse/)
+[![Python](https://img.shields.io/pypi/pyversions/trend-pulse)](https://pypi.org/project/trend-pulse/)
+[![License: MIT](https://img.shields.io/github/license/claude-world/trend-pulse)](LICENSE)
+
 Free trending topics aggregator + AI content guides — 15 sources, zero auth, patent-based scoring.
 
 Use as a **Python library**, **CLI tool**, or **MCP server** for Claude Code / AI agents.
