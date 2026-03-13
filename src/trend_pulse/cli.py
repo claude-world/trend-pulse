@@ -12,7 +12,7 @@ from .aggregator import TrendAggregator
 def main():
     parser = argparse.ArgumentParser(
         prog="trend-pulse",
-        description="Free trending topics aggregator (15 sources, zero auth)",
+        description="Free trending topics aggregator (20 sources, zero auth)",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 

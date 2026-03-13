@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.0] - 2026-03-14
+
+### Added
+
+- **Dcard** — Taiwan's largest social platform trending posts (public API, zero auth)
+- **PTT** — Taiwan BBS hot articles from Gossiping, Tech_Job, Stock, HatePolitics, LoL boards
+- Total sources expanded from 18 to **20** (10 searchable)
+
+### Changed
+
+- Updated all references from "15 sources" to "20 sources" (README, CLI, pyproject.toml)
+- Added Dcard, PTT, ArXiv, Product Hunt, Lemmy to README sources table and rate limits
+
 ## [0.4.0] - 2026-03-12
 
 ### Added

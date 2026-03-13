@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/trend-pulse)](https://pypi.org/project/trend-pulse/)
 [![License: MIT](https://img.shields.io/github/license/claude-world/trend-pulse)](LICENSE)
 
-Free trending topics aggregator + AI content guides — 15 sources, zero auth, patent-based scoring.
+Free trending topics aggregator + AI content guides — 20 sources, zero auth, patent-based scoring.
 
 Use as a **Python library**, **CLI tool**, or **MCP server** for Claude Code / AI agents.
 
@@ -30,6 +30,11 @@ All sources are free and require **zero authentication**:
 | **CoinGecko** | Public API | Real-time | Trending cryptocurrencies |
 | **Docker Hub** | Public API | Daily | Popular container images |
 | **Stack Overflow** | Public API | Real-time | Hot questions |
+| **ArXiv** | RSS/API | Daily | Trending research papers |
+| **Product Hunt** | Public API | Daily | Product launches and upvotes |
+| **Lemmy** | Public API | Real-time | Federated community posts (lemmy.world) |
+| **Dcard** | Public API | Real-time | Taiwan social platform trending posts |
+| **PTT** | Web scrape | Real-time | Taiwan BBS hot articles (Gossiping, Tech_Job, etc.) |
 
 ## Install
 
@@ -49,7 +54,7 @@ pip install "trend-pulse[all]"
 ### CLI
 
 ```bash
-# What's trending right now? (all 15 sources, merged ranking)
+# What's trending right now? (all 20 sources, merged ranking)
 trend-pulse trending
 
 # Taiwan trends from Google + Hacker News
@@ -188,7 +193,8 @@ trend-pulse sources
 
 **`--sources`**: Comma-separated source names:
 `google_trends`, `hackernews`, `mastodon`, `bluesky`, `wikipedia`, `github`, `pypi`,
-`google_news`, `lobsters`, `devto`, `npm`, `reddit`, `coingecko`, `dockerhub`, `stackoverflow`
+`google_news`, `lobsters`, `devto`, `npm`, `reddit`, `coingecko`, `dockerhub`, `stackoverflow`,
+`arxiv`, `producthunt`, `lemmy`, `dcard`, `ptt`
 
 **`--geo`**: ISO country code (e.g., `TW`, `US`, `JP`, `DE`).
 - Google Trends / Google News: filters by country
@@ -316,6 +322,11 @@ agg = TrendAggregator(sources=[MySource])
 | CoinGecko | 10-30 req / min | Public API |
 | Docker Hub | 100 req / 5 min | Public API |
 | Stack Overflow | 300 req / day | Without API key |
+| ArXiv | Unlimited | RSS/API |
+| Product Hunt | Reasonable | Public API |
+| Lemmy | Unlimited | Public API (lemmy.world) |
+| Dcard | Reasonable | Public API |
+| PTT | Reasonable | Web scrape, don't abuse |
 
 ## Content Guide Tools (v0.3.2)
 

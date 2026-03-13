@@ -16,6 +16,8 @@ from .stackoverflow import StackOverflowSource
 from .producthunt import ProductHuntSource
 from .arxiv import ArXivSource
 from .lemmy import LemmySource
+from .dcard import DcardSource
+from .ptt import PTTSource
 
 ALL_SOURCES = [
     GoogleTrendsSource,
@@ -36,6 +38,8 @@ ALL_SOURCES = [
     ProductHuntSource,
     ArXivSource,
     LemmySource,
+    DcardSource,
+    PTTSource,
 ]
 
 __all__ = [
@@ -57,5 +61,7 @@ __all__ = [
     "ProductHuntSource",
     "ArXivSource",
     "LemmySource",
+    "DcardSource",
+    "PTTSource",
     "ALL_SOURCES",
 ]
