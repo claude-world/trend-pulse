@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [{ name = "Claude World", email = "hello@claude-world.com" }]
-keywords = ["trends", "trending", "mcp", "google-trends", "hacker-news", "bluesky", "mastodon", "wikipedia", "github-trending", "pypi"]
+keywords = ["trends", "trending", "mcp", "google-trends", "hacker-news", "bluesky", "mastodon", "wikipedia", "github-trending", "pypi", "dcard", "ptt"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -42,6 +42,9 @@ all = ["mcp[cli]>=1.0", "trendspyg", "pytrends>=4.9"]
 [project.scripts]
 trend-pulse = "trend_pulse.cli:main"
 trend-pulse-server = "trend_pulse.server:main"
+
+[dependency-groups]
+dev = ["pytest>=8.0", "ruff>=0.4"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/trend_pulse"]

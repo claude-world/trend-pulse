@@ -1,6 +1,5 @@
 """Tests for patents/ module — templates, scorer, database."""
 
-import pytest
 from trend_pulse.patents.templates import (
     HOOK_TEMPLATES,
     HOOK_TEMPLATES_EN,

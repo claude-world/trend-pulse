@@ -1,7 +1,6 @@
 """Tests for server.py — MCP tool registration and integration."""
 
 import json
-import pytest
 import asyncio
 
 from trend_pulse.server import mcp

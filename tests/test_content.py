@@ -1,6 +1,5 @@
 """Tests for content/ module — adapter, briefing (guides)."""
 
-import pytest
 from trend_pulse.content.adapter import (
     PLATFORM_SPECS,
     get_platform_specs,
