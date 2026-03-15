@@ -104,7 +104,7 @@ def get_content_brief(
             },
             "engagement_trigger": {
                 "weight": 0.25,
-                "tips": ["Address the reader directly (you/your)", "Include CTA (comment/share/save)", "End with a question"],
+                "tips": ["Address the reader directly (you/your)", "Include CTA (comment/share/save)", "End with a question", "Humorous content officially receives more views on Threads"],
             },
             "conversation_durability": {
                 "weight": 0.20,
@@ -127,7 +127,7 @@ def get_content_brief(
             },
             "engagement_trigger": {
                 "weight": 0.25,
-                "tips": ["直接對讀者說話（你/你們）", "加 CTA（留言/分享/收藏）", "以提問結尾"],
+                "tips": ["直接對讀者說話（你/你們）", "加 CTA（留言/分享/收藏）", "以提問結尾", "幽默內容在 Threads 上官方確認獲得更多觀看"],
             },
             "conversation_durability": {
                 "weight": 0.20,
@@ -224,6 +224,7 @@ def get_scoring_guide(lang: str = "auto", topic: str = "") -> dict:
                     "Is there a clear CTA (comment/share/save/follow)?",
                     "Does it end with a question or invitation to respond?",
                     "Would readers feel compelled to react?",
+                    "Will you actively reply to comments? (Replies ≈ 50% of Threads views)",
                 ],
                 "high_signals": ["direct address", "clear CTA", "question ending", "relatable content", "actionable advice"],
                 "low_signals": ["passive voice", "no CTA", "monologue style", "no reader involvement"],
@@ -292,6 +293,7 @@ def get_scoring_guide(lang: str = "auto", topic: str = "") -> dict:
                     "是否有明確的 CTA（留言/分享/收藏/追蹤）？",
                     "是否以提問或邀請回應結尾？",
                     "讀者會覺得「必須回應」嗎？",
+                    "你會積極回覆留言嗎？（回覆 ≈ Threads 50% 觀看量）",
                 ],
                 "high_signals": ["直接稱呼", "明確 CTA", "提問結尾", "引起共鳴", "可操作建議"],
                 "low_signals": ["被動語態", "無 CTA", "獨白式", "無讀者參與感"],
@@ -413,6 +415,15 @@ def get_review_checklist(platform: str = "threads", lang: str = "auto", topic: s
                 "fix_method": "Add debatable angles, open-ended questions, or contrast points",
             },
             {
+                "id": "no_engagement_bait",
+                "category": "platform_compliance",
+                "severity": "critical",
+                "check": "Does the post avoid clickbait, engagement bait, contests, or giveaways?",
+                "pass_criteria": "No 'like if you agree', fake urgency, or prize offers",
+                "auto_fixable": False,
+                "fix_method": "Remove bait language, replace with genuine conversation starters",
+            },
+            {
                 "id": "hook_effectiveness",
                 "category": "content_quality",
                 "severity": "warning",
@@ -438,6 +449,15 @@ def get_review_checklist(platform: str = "threads", lang: str = "auto", topic: s
                 "pass_criteria": "Contains at least one question mark",
                 "auto_fixable": False,
                 "fix_method": "Add a question that invites reader participation",
+            },
+            {
+                "id": "media_enhancement",
+                "category": "content_quality",
+                "severity": "info",
+                "check": "Does the post include media (image/video/carousel) alongside text?",
+                "pass_criteria": "Text + media combination (officially recommended by Threads)",
+                "auto_fixable": False,
+                "fix_method": "Add a relevant image, video, or carousel",
             },
             {
                 "id": "format_readability",
@@ -479,6 +499,15 @@ def get_review_checklist(platform: str = "threads", lang: str = "auto", topic: s
                 "fix_method": "加入可辯論的角度、開放式問題或轉折點",
             },
             {
+                "id": "no_engagement_bait",
+                "category": "platform_compliance",
+                "severity": "critical",
+                "check": "是否避免了標題黨、互動誘餌、抽獎或贈品？",
+                "pass_criteria": "無「按讚=同意」、虛假緊迫感或獎品招攬",
+                "auto_fixable": False,
+                "fix_method": "移除誘餌用語，替換為真誠的對話開場",
+            },
+            {
                 "id": "hook_effectiveness",
                 "category": "content_quality",
                 "severity": "warning",
@@ -504,6 +533,15 @@ def get_review_checklist(platform: str = "threads", lang: str = "auto", topic: s
                 "pass_criteria": "至少有一個問號",
                 "auto_fixable": False,
                 "fix_method": "加入邀請讀者參與的問句",
+            },
+            {
+                "id": "media_enhancement",
+                "category": "content_quality",
+                "severity": "info",
+                "check": "貼文是否搭配圖片/影片/輪播？",
+                "pass_criteria": "文字 + 媒體組合（Threads 官方推薦）",
+                "auto_fixable": False,
+                "fix_method": "加入相關的圖片、影片或輪播",
             },
             {
                 "id": "format_readability",

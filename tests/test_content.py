@@ -26,6 +26,31 @@ class TestAdapter:
             assert "zh-TW" in spec["format"]
             assert "en" in spec["format"]
 
+    def test_threads_has_official_fields(self):
+        threads = PLATFORM_SPECS["threads"]
+        assert "humor" in threads["strengths"]
+        assert "media" in threads
+        assert threads["media"]["video_max_minutes"] == 5
+        assert threads["media"]["carousel_max"] == 20
+        assert "posting_frequency" in threads
+        assert "reply_strategy" in threads
+        assert "non_recommendable" in threads
+        assert len(threads["non_recommendable"]["en"]) >= 4
+        assert len(threads["non_recommendable"]["zh-TW"]) >= 4
+        assert "topic_tags" in threads
+        assert "cross_promotion" in threads
+
+    def test_threads_new_fields_localized(self):
+        result = get_platform_specs("threads", "en")
+        for field in ("posting_frequency", "reply_strategy", "topic_tags", "cross_promotion"):
+            assert isinstance(result[field], str), f"{field} should be a localized string"
+        assert isinstance(result["media"]["tip"], str), "media.tip should be a localized string"
+        assert isinstance(result["non_recommendable"], list), "non_recommendable should resolve to list"
+        result_zh = get_platform_specs("threads", "zh-TW")
+        assert "週" in result_zh["posting_frequency"]
+        assert isinstance(result_zh["non_recommendable"], list)
+        assert any("標題黨" in item for item in result_zh["non_recommendable"])
+
     def test_get_platform_specs_single_en(self):
         result = get_platform_specs("threads", "en")
         assert result["platform"] == "threads"
@@ -171,7 +196,7 @@ class TestReviewChecklist:
 
     def test_review_checklist_has_items(self):
         cl = get_review_checklist("threads", "en")
-        assert len(cl["checklist"]) >= 7
+        assert len(cl["checklist"]) >= 9
 
     def test_review_checklist_item_structure(self):
         cl = get_review_checklist("threads", "en")
@@ -187,7 +212,19 @@ class TestReviewChecklist:
     def test_review_checklist_has_critical_items(self):
         cl = get_review_checklist("threads", "en")
         critical = [i for i in cl["checklist"] if i["severity"] == "critical"]
-        assert len(critical) >= 3
+        assert len(critical) >= 4
+
+    def test_review_checklist_has_engagement_bait_check(self):
+        cl = get_review_checklist("threads", "en")
+        ids = [i["id"] for i in cl["checklist"]]
+        assert "no_engagement_bait" in ids
+        bait_item = next(i for i in cl["checklist"] if i["id"] == "no_engagement_bait")
+        assert bait_item["severity"] == "critical"
+
+    def test_review_checklist_has_media_enhancement(self):
+        cl = get_review_checklist("threads", "en")
+        ids = [i["id"] for i in cl["checklist"]]
+        assert "media_enhancement" in ids
 
     def test_review_checklist_platform_limits(self):
         for platform, limit in [("threads", 500), ("instagram", 2200), ("facebook", 63206)]:
