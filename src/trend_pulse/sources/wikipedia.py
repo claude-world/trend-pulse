@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import httpx
 
@@ -19,7 +19,7 @@ class WikipediaSource(TrendSource):
 
     async def fetch_trending(self, geo: str = "", count: int = 20) -> list[TrendItem]:
         # Use yesterday's data (today might not be ready yet)
-        date = datetime.utcnow() - timedelta(days=1)
+        date = datetime.now(timezone.utc) - timedelta(days=1)
         year, month, day = date.strftime("%Y"), date.strftime("%m"), date.strftime("%d")
 
         # Map geo to Wikipedia project

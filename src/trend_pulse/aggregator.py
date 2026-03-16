@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .sources.base import TrendSource, TrendItem
@@ -84,7 +84,7 @@ class TrendAggregator:
         merged = sorted(all_items, key=lambda x: x.score, reverse=True)
 
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "geo": geo,
             "sources_ok": list(results.keys()),
             "sources_error": errors,
@@ -123,7 +123,7 @@ class TrendAggregator:
 
         return {
             "query": query,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "sources_ok": list(results.keys()),
             "sources_error": errors,
             "merged_top": [it.to_dict() for it in merged[:20]],

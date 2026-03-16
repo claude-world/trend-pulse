@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .sources.base import TrendItem
 from .history import TrendDB
@@ -30,7 +30,7 @@ async def enrich_with_velocity(
     keywords = [item.keyword for item in items]
     latest = await db.get_latest_scores(keywords)
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     for item in items:
         key = f"{item.keyword}::{item.source}"
@@ -46,9 +46,15 @@ async def enrich_with_velocity(
 
         # Parse previous timestamp (SQLite stores naive UTC strings like "2026-03-12 05:32:56")
         try:
-            prev_time = datetime.fromisoformat(prev["timestamp"])
+            # Normalize "Z" suffix for Python <3.11 compat (fromisoformat doesn't accept "Z" until 3.11)
+            raw_ts = prev["timestamp"].replace("Z", "+00:00")
+            dt = datetime.fromisoformat(raw_ts)
+            prev_time = dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
         except (ValueError, AttributeError):
-            prev_time = now
+            # Unparseable timestamp — treat as no reliable history
+            item.direction = "new"
+            item.velocity = 0.0
+            continue
 
         hours_elapsed = max((now - prev_time).total_seconds() / 3600, 0.01)
 

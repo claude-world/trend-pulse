@@ -136,4 +136,4 @@ class TestBrowserTool:
 class TestVersion:
     def test_version_is_050(self):
         from trend_pulse import __version__
-        assert __version__ == "0.5.0"
+        assert __version__ == "0.5.1"
