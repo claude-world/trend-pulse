@@ -38,6 +38,22 @@ All sources are free and require **zero authentication**:
 
 ## Install
 
+### Zero-install with uvx (recommended)
+
+[uvx](https://docs.astral.sh/uv/guides/tools/) runs Python packages directly — no install, no venv, no setup:
+
+```bash
+# Run the CLI instantly
+uvx trend-pulse trending
+
+# Run the MCP server
+uvx --from "trend-pulse[mcp]" trend-pulse-server
+```
+
+> `uvx` is the Python equivalent of `npx`. It comes with [uv](https://docs.astral.sh/uv/) — install uv with `curl -LsSf https://astral.sh/uv/install.sh | sh`
+
+### pip install
+
 ```bash
 # Core (httpx + aiosqlite)
 pip install trend-pulse
@@ -45,7 +61,7 @@ pip install trend-pulse
 # With MCP server support
 pip install "trend-pulse[mcp]"
 
-# Everything
+# Everything (MCP + enhanced Google Trends)
 pip install "trend-pulse[all]"
 ```
 
@@ -132,18 +148,7 @@ asyncio.run(main())
 
 Add to your Claude Code MCP config (`.mcp.json`):
 
-```json
-{
-  "mcpServers": {
-    "trend-pulse": {
-      "command": "trend-pulse-server",
-      "type": "stdio"
-    }
-  }
-}
-```
-
-Or with uvx (no install needed):
+**uvx (zero-install, recommended):**
 
 ```json
 {
@@ -151,6 +156,21 @@ Or with uvx (no install needed):
     "trend-pulse": {
       "command": "uvx",
       "args": ["--from", "trend-pulse[mcp]", "trend-pulse-server"],
+      "type": "stdio"
+    }
+  }
+}
+```
+
+No `pip install` needed — uvx downloads and caches the package automatically on first run.
+
+**If already installed via pip:**
+
+```json
+{
+  "mcpServers": {
+    "trend-pulse": {
+      "command": "trend-pulse-server",
       "type": "stdio"
     }
   }
