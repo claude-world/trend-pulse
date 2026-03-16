@@ -6,15 +6,17 @@
 
 - Replaced all deprecated `datetime.utcnow()` / `utcfromtimestamp()` with timezone-aware alternatives (Python 3.12+ compat)
 - Defensive timezone handling in velocity calculation — correctly handles both naive and aware timestamps
+- Normalize `Z`-suffix timestamps via `.replace("Z", "+00:00")` for Python 3.10 compat in velocity parsing
+- Unparseable timestamps now return `direction="new"` instead of false velocity spike
 - MCP `get_trending` tool docstring now lists all 20 sources (was missing arxiv, producthunt, lemmy, dcard, ptt)
 - `published` field in Reddit/StackOverflow items now uses `+00:00` offset instead of `Z` suffix (both valid ISO 8601)
 
 ### Added
 
 - `py.typed` marker (PEP 561) for downstream type-checking support
-- 61 unit tests for all 20 sources with mocked HTTP responses (`test_sources.py`)
-- 6 velocity enrichment tests covering rising/declining/stable/new/invalid-timestamp/aware-timestamp paths
-- Total test count: 121 → **182**
+- 62 unit tests for all 20 sources with mocked HTTP responses (`test_sources.py`)
+- 7 velocity enrichment tests covering rising/declining/stable/new/invalid-timestamp/z-suffix/aware-timestamp paths
+- Total test count: 121 → **183**
 
 ## [0.5.0] - 2026-03-14
 
