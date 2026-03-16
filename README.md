@@ -157,7 +157,7 @@ Or with uvx (no install needed):
 }
 ```
 
-The MCP server exposes 10 tools:
+The MCP server exposes 11 tools:
 
 **Trend Tools:**
 
@@ -180,6 +180,12 @@ All content tools return **structured guides** — the LLM does all judgment and
 | `get_platform_specs` | Platform specs: char limits, format tips, algo priority, best times |
 | `get_review_checklist` | Review checklist: platform compliance, quality gates, checklist items with severity |
 | `get_reel_guide` | Reel/Short video guide: scene structure, timing, visual guidance, editing tips |
+
+**Browser Rendering Tool (v0.3.3):**
+
+| Tool | Description |
+|------|-------------|
+| `render_page` | Render JS-heavy pages via Cloudflare Browser Rendering (requires `CF_ACCOUNT_ID` + `CF_API_TOKEN`) |
 
 ## CLI Reference
 
