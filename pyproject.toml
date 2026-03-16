@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "trend-pulse"
-version = "0.5.0"
+version = "0.5.1"
 description = "Free trending topics aggregator and AI content guides with 20 sources, zero auth, patent-based scoring, plus a CLI, MCP server, and Python library."
 readme = "README.md"
 license = "MIT"

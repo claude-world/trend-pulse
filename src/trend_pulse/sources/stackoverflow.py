@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import html
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 
@@ -30,7 +30,7 @@ class StackOverflowSource(TrendSource):
                 url=item.get("link", ""),
                 traffic=f"{view_count} views",
                 category="tech",
-                published=datetime.utcfromtimestamp(item.get("creation_date", 0)).isoformat() + "Z",
+                published=datetime.fromtimestamp(item.get("creation_date", 0), tz=timezone.utc).isoformat(),
                 metadata={
                     "tags": item.get("tags", []),
                     "answer_count": item.get("answer_count", 0),

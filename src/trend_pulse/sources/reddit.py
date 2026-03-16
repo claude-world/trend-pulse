@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 
@@ -34,7 +34,7 @@ class RedditSource(TrendSource):
                 url=f'https://reddit.com{post.get("permalink", "")}',
                 traffic=f"{upvotes} upvotes",
                 category="general",
-                published=datetime.utcfromtimestamp(post.get("created_utc", 0)).isoformat() + "Z",
+                published=datetime.fromtimestamp(post.get("created_utc", 0), tz=timezone.utc).isoformat(),
                 metadata={
                     "subreddit": post.get("subreddit", ""),
                     "author": post.get("author", ""),

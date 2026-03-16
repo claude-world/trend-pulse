@@ -35,7 +35,8 @@ async def get_trending(
         sources: Comma-separated source names (default: all).
                  Available: google_trends, hackernews, mastodon, bluesky, wikipedia,
                  github, pypi, google_news, lobsters, devto, npm, reddit,
-                 coingecko, dockerhub, stackoverflow
+                 coingecko, dockerhub, stackoverflow, arxiv, producthunt, lemmy,
+                 dcard, ptt
         geo: Country code for regional trends (e.g. TW, US, JP)
         count: Number of results per source (default: 20)
         save: Save snapshot to history DB for velocity tracking (default: false)
