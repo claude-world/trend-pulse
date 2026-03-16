@@ -9,6 +9,14 @@ Free trending topics aggregator + AI content guides — 20 sources, zero auth, p
 
 Use as a **Python library**, **CLI tool**, or **MCP server** for Claude Code / AI agents.
 
+**One-line MCP setup (zero install):**
+
+```json
+{ "mcpServers": { "trend-pulse": { "command": "uvx", "args": ["--from", "trend-pulse[mcp]", "trend-pulse-server"], "type": "stdio" } } }
+```
+
+> Paste into `.mcp.json` and you're done. Requires [uv](https://docs.astral.sh/uv/) (`brew install uv` or `curl -LsSf https://astral.sh/uv/install.sh | sh`).
+
 ## Sources
 
 All sources are free and require **zero authentication**:

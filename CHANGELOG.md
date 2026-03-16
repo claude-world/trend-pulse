@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.2] - 2026-03-17
+
+### Added
+
+- **PyPI auto-publish** — GitHub Releases now auto-publish to PyPI via Trusted Publisher (no token needed)
+- **uvx zero-install** — promoted as recommended install method in README
+
+### Changed
+
+- README: added one-line MCP setup snippet at the top for quick copy-paste
+- README: reordered MCP config to show uvx first, pip second
+- README: added uv install instructions (`brew install uv` / `curl`)
+
 ## [0.5.1] - 2026-03-16
 
 ### Fixed
