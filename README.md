@@ -154,9 +154,19 @@ asyncio.run(main())
 
 ### MCP Server (for Claude Code / AI agents)
 
-Add to your Claude Code MCP config (`.mcp.json`):
+#### Step 1: Install uv (if you don't have it)
 
-**uvx (zero-install, recommended):**
+```bash
+# macOS
+brew install uv
+
+# Linux / WSL
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+#### Step 2: Add to `.mcp.json`
+
+Create or edit `.mcp.json` in your project root (or `~/.claude/.mcp.json` for global):
 
 ```json
 {
@@ -170,9 +180,37 @@ Add to your Claude Code MCP config (`.mcp.json`):
 }
 ```
 
-No `pip install` needed — uvx downloads and caches the package automatically on first run.
+That's it. No `pip install`, no venv, no Python version management. uvx downloads and caches the package automatically on first run.
 
-**If already installed via pip:**
+#### Step 3 (optional): Enable browser rendering
+
+The `render_page` tool uses Cloudflare Browser Rendering to fetch JS-heavy pages. If you want this feature, add your Cloudflare credentials:
+
+```json
+{
+  "mcpServers": {
+    "trend-pulse": {
+      "command": "uvx",
+      "args": ["--from", "trend-pulse[mcp]", "trend-pulse-server"],
+      "type": "stdio",
+      "env": {
+        "CF_ACCOUNT_ID": "your-cloudflare-account-id",
+        "CF_API_TOKEN": "your-cloudflare-api-token"
+      }
+    }
+  }
+}
+```
+
+> Get these from [Cloudflare Dashboard](https://dash.cloudflare.com/) → Workers & Pages → Overview. Skip this step if you don't need it — all other 10 tools work without any credentials.
+
+#### Alternative: pip install
+
+If you prefer a traditional install instead of uvx:
+
+```bash
+pip install "trend-pulse[mcp]"
+```
 
 ```json
 {
@@ -185,9 +223,9 @@ No `pip install` needed — uvx downloads and caches the package automatically o
 }
 ```
 
-The MCP server exposes 11 tools:
+#### Available tools (11)
 
-**Trend Tools:**
+**Trend Tools (zero auth):**
 
 | Tool | Description |
 |------|-------------|
@@ -197,7 +235,7 @@ The MCP server exposes 11 tools:
 | `get_trend_history` | Query historical trend data for a keyword |
 | `take_snapshot` | Fetch + save snapshot to history DB |
 
-**Content Guide Tools (v0.3.2):**
+**Content Guide Tools (zero auth):**
 
 All content tools return **structured guides** — the LLM does all judgment and creative work.
 
@@ -209,11 +247,11 @@ All content tools return **structured guides** — the LLM does all judgment and
 | `get_review_checklist` | Review checklist: platform compliance, quality gates, checklist items with severity |
 | `get_reel_guide` | Reel/Short video guide: scene structure, timing, visual guidance, editing tips |
 
-**Browser Rendering Tool (v0.3.3):**
+**Browser Rendering Tool (optional, requires Cloudflare credentials):**
 
 | Tool | Description |
 |------|-------------|
-| `render_page` | Render JS-heavy pages via Cloudflare Browser Rendering (requires `CF_ACCOUNT_ID` + `CF_API_TOKEN`) |
+| `render_page` | Render JS-heavy pages via Cloudflare Browser Rendering |
 
 ## CLI Reference
 
