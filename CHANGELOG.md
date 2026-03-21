@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.5.3] - 2026-03-22
+
+### Added
+
+- **Threads algorithm penalty pre-checks** — 4 blocking checks before scoring, based on [official Threads Creator Page](https://creators.instagram.com/threads):
+  - `no_clickbait` — hook must deliver on its promise
+  - `no_engagement_bait` — no explicit asks for likes/reposts/follows
+  - `no_contest_violation` — contests must not tie engagement to entry
+  - `original_content` — cross-posted content gets reduced reach
+- **Enhanced review checklist** — expanded from 9 to 15 items across 3 severity levels:
+  - 7 critical (including 4 new algorithm penalty checks)
+  - 5 warning (media_enhancement upgraded from info to warning)
+  - 3 info
+- Penalty pre-checks integrated into both `get_scoring_guide()` and `get_review_checklist()`
+- Full bilingual support (EN + zh-TW) for all new penalty checks
+
 ## [0.5.2] - 2026-03-17
 
 ### Added
@@ -38,6 +54,14 @@
 - **Dcard** — Taiwan's largest social platform trending posts (public API, zero auth)
 - **PTT** — Taiwan BBS hot articles from Gossiping, Tech_Job, Stock, HatePolitics, LoL boards
 - Total sources expanded from 18 to **20** (10 searchable)
+- **Threads Creator Page insights** — integrated official data from https://creators.instagram.com/threads:
+  - Posting frequency guidance (2-5x/week)
+  - Reply strategy (replies ≈ 50% of Threads views)
+  - Media enhancement (text + media outperforms text-only)
+  - Humor as officially documented strength
+  - Topic tag best practices
+  - 15 supported content types (TEXT, IMAGE, VIDEO, CAROUSEL, POLL, GIF, etc.)
+  - Non-recommendable content list (clickbait, engagement bait, cross-posts)
 
 ### Changed
 

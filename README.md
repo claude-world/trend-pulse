@@ -242,9 +242,9 @@ All content tools return **structured guides** — the LLM does all judgment and
 | Tool | Description |
 |------|-------------|
 | `get_content_brief` | Writing brief: hook examples, patent strategies, scoring dimensions, CTA examples |
-| `get_scoring_guide` | 5-dimension scoring framework: evaluation criteria, high/low signals, grade thresholds |
-| `get_platform_specs` | Platform specs: char limits, format tips, algo priority, best times |
-| `get_review_checklist` | Review checklist: platform compliance, quality gates, checklist items with severity |
+| `get_scoring_guide` | 5-dimension scoring framework + 4 Threads algorithm penalty pre-checks |
+| `get_platform_specs` | Platform specs: char limits, Threads creator insights, algo priority, best times |
+| `get_review_checklist` | 15-item review checklist (7 critical / 5 warning / 3 info) with severity and fix methods |
 | `get_reel_guide` | Reel/Short video guide: scene structure, timing, visual guidance, editing tips |
 
 **Browser Rendering Tool (optional, requires Cloudflare credentials):**
@@ -400,9 +400,66 @@ agg = TrendAggregator(sources=[MySource])
 | Dcard | Reasonable | Public API |
 | PTT | Reasonable | Web scrape, don't abuse |
 
-## Content Guide Tools (v0.3.2)
+## Content Guide Tools
 
 MCP tools provide structured guides for creating viral content optimized against Meta's 7 ranking patents. **The LLM does all judgment and creative work** — tools only provide frameworks and criteria.
+
+### Threads Algorithm Penalty Pre-Checks (v0.5.3)
+
+Before scoring, content is checked against 4 **officially penalized** patterns from the [Threads Creator Page](https://creators.instagram.com/threads). Any violation blocks publishing:
+
+| Penalty | What Threads Penalizes | Action |
+|---------|----------------------|--------|
+| `no_clickbait` | Hook promises something the body doesn't deliver | Align hook with content |
+| `no_engagement_bait` | Explicitly asks for likes/reposts/follows | Replace with natural CTA |
+| `no_contest_violation` | Contest/giveaway requires engagement to enter | Remove or decouple |
+| `original_content` | Cross-posted from IG/FB without original angle | Rewrite with original perspective |
+
+### Patent-Based Scoring (5 Dimensions)
+
+| Dimension | Weight | Based On |
+|-----------|--------|----------|
+| Hook Power | 25% | EdgeRank Weight + Andromeda |
+| Engagement Trigger | 25% | Story-Viewer Tuple + Dear Algo |
+| Conversation Durability | 20% | Threads 72hr window |
+| Velocity Potential | 15% | Andromeda Real-time |
+| Format Score | 15% | Multi-modal Indexing |
+
+Grades: **S** (90+), **A** (80+), **B** (70+), **C** (55+), **D** (<55)
+
+Quality gate: overall >= 70, conversation durability >= 55.
+
+### Review Checklist (15 Items)
+
+| Severity | Count | Examples |
+|----------|-------|---------|
+| **critical** | 7 | char limit, overall score, conversation durability, 4 algorithm penalties |
+| **warning** | 5 | hook effectiveness, CTA presence, media enhancement, tone authenticity, topic tag |
+| **info** | 3 | question presence, format readability, reply strategy |
+
+Verdict: **pass** = all critical checks pass, **fail** = any critical check fails.
+
+### Threads Creator Insights (v0.5.0)
+
+Key signals from the [official Threads Creator Page](https://creators.instagram.com/threads):
+
+- **Posting frequency**: 2-5 times per week (higher = more views per post)
+- **Replies**: Account for ~50% of Threads views — actively reply to comments
+- **Media**: Text + media significantly outperforms text-only
+- **Humor**: Officially documented as performing well on Threads
+- **Topic tags**: Multi-word tags with emojis increase reach
+- **15 content types**: TEXT, IMAGE, VIDEO, CAROUSEL, POLL, GIF, LINK_ATTACHMENT, TEXT_ATTACHMENT, SPOILER_MEDIA, SPOILER_TEXT, GHOST_POST, QUOTE_POST, REPLY_CONTROL, TOPIC_TAG, ALT_TEXT
+
+### Workflow: MCP Guides LLM
+
+```
+1. get_content_brief()      → LLM gets writing guide with hook examples & strategies
+2. LLM creates content      → Original text based on brief
+3. get_scoring_guide()       → LLM runs penalty pre-checks, then self-scores 5 dimensions
+4. LLM revises              → Iterate until score >= 70
+5. get_review_checklist()    → LLM checks 15 items (7 critical / 5 warning / 3 info)
+6. get_platform_specs()      → LLM adapts for each platform
+```
 
 ### Python
 
@@ -421,13 +478,14 @@ print(f"Topic: {brief['topic']}, Char limit: {brief['char_limit']}")
 print(f"Hook examples: {len(brief['hook_examples'])}")
 print(f"Patent strategies: {len(brief['patent_strategies'])}")
 
-# Get scoring guide — 5-dimension evaluation framework
+# Get scoring guide — penalty pre-checks + 5-dimension evaluation framework
 guide = get_scoring_guide("en")
+print(f"Penalty pre-checks: {len(guide['penalty_precheck']['penalties'])}")
 for name, dim in guide["dimensions"].items():
     print(f"{name}: weight={dim['weight']}, {dim['description']}")
 print(f"Grades: {list(guide['grade_thresholds'].keys())}")
 
-# Get review checklist — structured quality checks
+# Get review checklist — 15 structured quality checks (7 critical)
 checklist = get_review_checklist("threads", "en")
 for item in checklist["checklist"]:
     print(f"[{item['severity']}] {item['check']}")
@@ -443,29 +501,6 @@ guide = get_reel_guide("educational", 30, "en")
 for scene in guide["scene_structure"]:
     print(f"[{scene['type']}] {scene['duration_seconds']}s — {scene['purpose']}")
 ```
-
-### Workflow: MCP Guides LLM
-
-```
-1. get_content_brief()      → LLM gets writing guide with hook examples & strategies
-2. LLM creates content      → Original text based on brief
-3. get_scoring_guide()       → LLM self-scores on 5 dimensions
-4. LLM revises              → Iterate until score >= 70
-5. get_review_checklist()    → LLM checks against quality gate
-6. get_platform_specs()      → LLM adapts for each platform
-```
-
-### Patent-Based Scoring (5 Dimensions)
-
-| Dimension | Weight | Based On |
-|-----------|--------|----------|
-| Hook Power | 25% | EdgeRank Weight + Andromeda |
-| Engagement Trigger | 25% | Story-Viewer Tuple + Dear Algo |
-| Conversation Durability | 20% | Threads 72hr window |
-| Velocity Potential | 15% | Andromeda Real-time |
-| Format Score | 15% | Multi-modal Indexing |
-
-Grades: **S** (90+), **A** (80+), **B** (70+), **C** (55+), **D** (<55)
 
 ### Content Types
 
