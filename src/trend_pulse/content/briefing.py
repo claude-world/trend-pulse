@@ -347,8 +347,33 @@ def get_scoring_guide(lang: str = "auto", topic: str = "") -> dict:
         "D": {"min": 0, "description": "Weak — significant rewrite needed"},
     }
 
+    # Penalty pre-checks (must pass before scoring)
+    if lang == "en":
+        penalty_precheck = {
+            "description": "Check these BEFORE scoring. If any fail, rewrite first.",
+            "source": "https://creators.instagram.com/threads",
+            "penalties": [
+                {"id": "no_clickbait", "check": "Hook promises something the body doesn't deliver", "action": "Align hook with content"},
+                {"id": "no_engagement_bait", "check": "Explicitly asks for likes/reposts/follows", "action": "Replace with natural CTA"},
+                {"id": "no_contest_violation", "check": "Contest/giveaway requires engagement to enter", "action": "Remove or decouple"},
+                {"id": "original_content", "check": "Cross-posted from another platform without original angle", "action": "Rewrite with original perspective"},
+            ],
+        }
+    else:
+        penalty_precheck = {
+            "description": "評分前先檢查這些。任何一項不通過就先改寫。",
+            "source": "https://creators.instagram.com/threads",
+            "penalties": [
+                {"id": "no_clickbait", "check": "Hook 承諾了正文沒兌現的東西", "action": "讓 Hook 與正文對齊"},
+                {"id": "no_engagement_bait", "check": "直接要求按讚/轉發/追蹤", "action": "用自然 CTA 替換"},
+                {"id": "no_contest_violation", "check": "抽獎/贈品要求互動行為才能參加", "action": "移除或脫鉤"},
+                {"id": "original_content", "check": "從其他平台搬運且無原創角度", "action": "加入原創觀點重寫"},
+            ],
+        }
+
     return {
         "scoring_method": "Evaluate each dimension 0-100, then compute weighted overall score",
+        "penalty_precheck": penalty_precheck,
         "dimensions": dimensions,
         "grade_thresholds": grade_thresholds,
         "quality_gate": {
@@ -356,7 +381,8 @@ def get_scoring_guide(lang: str = "auto", topic: str = "") -> dict:
             "min_conversation": 55,
         },
         "instructions": (
-            "Score each dimension 0-100 based on the evaluation criteria. "
+            "FIRST: Run penalty pre-check. If any penalty is triggered, rewrite before scoring. "
+            "THEN: Score each dimension 0-100 based on the evaluation criteria. "
             "Compute overall = sum(dimension_score * weight). "
             "Assign grade based on thresholds. "
             "List specific strengths and improvement suggestions."
@@ -415,13 +441,40 @@ def get_review_checklist(platform: str = "threads", lang: str = "auto", topic: s
                 "fix_method": "Add debatable angles, open-ended questions, or contrast points",
             },
             {
-                "id": "no_engagement_bait",
-                "category": "platform_compliance",
+                "id": "no_clickbait",
+                "category": "algorithm_penalty",
                 "severity": "critical",
-                "check": "Does the post avoid clickbait, engagement bait, contests, or giveaways?",
-                "pass_criteria": "No 'like if you agree', fake urgency, or prize offers",
+                "check": "Does the hook deliver on its promise? (Clickbait = reduced distribution)",
+                "pass_criteria": "Every claim in the hook is substantiated in the body",
+                "auto_fixable": False,
+                "fix_method": "Align hook with actual content, or tone down the hook",
+            },
+            {
+                "id": "no_engagement_bait",
+                "category": "algorithm_penalty",
+                "severity": "critical",
+                "check": "Does the post avoid engagement bait? (Explicitly penalized by Threads)",
+                "pass_criteria": "No 'like if you agree', 'repost this', 'follow for more', or similar",
                 "auto_fixable": False,
                 "fix_method": "Remove bait language, replace with genuine conversation starters",
+            },
+            {
+                "id": "no_contest_violation",
+                "category": "algorithm_penalty",
+                "severity": "critical",
+                "check": "No contests/giveaways that require engagement actions to enter?",
+                "pass_criteria": "No prize offers contingent on likes/follows/reposts",
+                "auto_fixable": False,
+                "fix_method": "Remove contest mechanics or decouple from engagement requirements",
+            },
+            {
+                "id": "original_content",
+                "category": "algorithm_penalty",
+                "severity": "critical",
+                "check": "Is this original Threads content (not cross-posted from IG/FB)?",
+                "pass_criteria": "Written specifically for Threads with original angle — reposts get reduced reach",
+                "auto_fixable": False,
+                "fix_method": "Rewrite with Threads-native voice and original perspective",
             },
             {
                 "id": "hook_effectiveness",
@@ -453,11 +506,29 @@ def get_review_checklist(platform: str = "threads", lang: str = "auto", topic: s
             {
                 "id": "media_enhancement",
                 "category": "content_quality",
-                "severity": "info",
+                "severity": "warning",
                 "check": "Does the post include media (image/video/carousel) alongside text?",
-                "pass_criteria": "Text + media combination (officially recommended by Threads)",
+                "pass_criteria": "Text + media combination — officially outperforms text-only on Threads",
                 "auto_fixable": False,
                 "fix_method": "Add a relevant image, video, or carousel",
+            },
+            {
+                "id": "tone_authenticity",
+                "category": "content_quality",
+                "severity": "warning",
+                "check": "Does the post sound authentic with personal voice? (Humor performs well on Threads)",
+                "pass_criteria": "Has personal angle, genuine opinion, or humor — not corporate/bot tone",
+                "auto_fixable": False,
+                "fix_method": "Add personal experience, opinion, or witty observation",
+            },
+            {
+                "id": "topic_tag",
+                "category": "discoverability",
+                "severity": "warning",
+                "check": "Does the post include a relevant topic tag for discoverability?",
+                "pass_criteria": "Has --topic-tag with relevant multi-word tag",
+                "auto_fixable": True,
+                "fix_method": "Add --topic-tag with the post's main subject",
             },
             {
                 "id": "format_readability",
@@ -467,6 +538,15 @@ def get_review_checklist(platform: str = "threads", lang: str = "auto", topic: s
                 "pass_criteria": "Has line breaks, paragraphs, or lists for readability",
                 "auto_fixable": True,
                 "fix_method": "Add line breaks after sentences, add separator line before CTA",
+            },
+            {
+                "id": "reply_strategy",
+                "category": "engagement",
+                "severity": "info",
+                "check": "Does the post invite replies? (Replies = ~50% of Threads views)",
+                "pass_criteria": "Ends with a question or invites sharing personal experience",
+                "auto_fixable": False,
+                "fix_method": "Add follow-up question or 'What's your experience?' prompt",
             },
         ]
     else:
@@ -499,13 +579,40 @@ def get_review_checklist(platform: str = "threads", lang: str = "auto", topic: s
                 "fix_method": "加入可辯論的角度、開放式問題或轉折點",
             },
             {
-                "id": "no_engagement_bait",
-                "category": "platform_compliance",
+                "id": "no_clickbait",
+                "category": "algorithm_penalty",
                 "severity": "critical",
-                "check": "是否避免了標題黨、互動誘餌、抽獎或贈品？",
-                "pass_criteria": "無「按讚=同意」、虛假緊迫感或獎品招攬",
+                "check": "Hook 是否兌現了承諾？（標題黨 = 降低觸及）",
+                "pass_criteria": "Hook 中的每個宣言都在正文中有實質內容支撐",
+                "auto_fixable": False,
+                "fix_method": "讓 Hook 與正文對齊，或降低 Hook 的承諾",
+            },
+            {
+                "id": "no_engagement_bait",
+                "category": "algorithm_penalty",
+                "severity": "critical",
+                "check": "是否避免了互動誘餌？（Threads 官方明確處罰）",
+                "pass_criteria": "無「按讚=同意」「轉發這篇」「追蹤看更多」等直接要求互動",
                 "auto_fixable": False,
                 "fix_method": "移除誘餌用語，替換為真誠的對話開場",
+            },
+            {
+                "id": "no_contest_violation",
+                "category": "algorithm_penalty",
+                "severity": "critical",
+                "check": "是否無違規抽獎/贈品活動？",
+                "pass_criteria": "無以按讚/追蹤/轉發為參加條件的活動",
+                "auto_fixable": False,
+                "fix_method": "移除活動機制或將參加條件與互動行為脫鉤",
+            },
+            {
+                "id": "original_content",
+                "category": "algorithm_penalty",
+                "severity": "critical",
+                "check": "是否為 Threads 原創內容（非從 IG/FB 搬運）？",
+                "pass_criteria": "專為 Threads 撰寫，有原創角度 — 搬運內容觸及會下降",
+                "auto_fixable": False,
+                "fix_method": "用 Threads 原生語氣重寫，加入原創觀點",
             },
             {
                 "id": "hook_effectiveness",
@@ -537,11 +644,29 @@ def get_review_checklist(platform: str = "threads", lang: str = "auto", topic: s
             {
                 "id": "media_enhancement",
                 "category": "content_quality",
-                "severity": "info",
+                "severity": "warning",
                 "check": "貼文是否搭配圖片/影片/輪播？",
-                "pass_criteria": "文字 + 媒體組合（Threads 官方推薦）",
+                "pass_criteria": "文字 + 媒體組合 — Threads 官方確認效果顯著優於純文字",
                 "auto_fixable": False,
                 "fix_method": "加入相關的圖片、影片或輪播",
+            },
+            {
+                "id": "tone_authenticity",
+                "category": "content_quality",
+                "severity": "warning",
+                "check": "語氣是否真實有個人特色？（幽默在 Threads 表現特別好）",
+                "pass_criteria": "有個人觀點、真實體驗或幽默感 — 非公司腔/機器人腔",
+                "auto_fixable": False,
+                "fix_method": "加入個人經歷、觀點或機智的觀察",
+            },
+            {
+                "id": "topic_tag",
+                "category": "discoverability",
+                "severity": "warning",
+                "check": "是否加了相關的 Topic Tag 提升可發現性？",
+                "pass_criteria": "有 --topic-tag 且為相關的多字主題標籤",
+                "auto_fixable": True,
+                "fix_method": "加入 --topic-tag 並填寫貼文的主題",
             },
             {
                 "id": "format_readability",
@@ -551,6 +676,15 @@ def get_review_checklist(platform: str = "threads", lang: str = "auto", topic: s
                 "pass_criteria": "有換行、段落或列表提升可讀性",
                 "auto_fixable": True,
                 "fix_method": "在句子後加換行，CTA 前加分隔線",
+            },
+            {
+                "id": "reply_strategy",
+                "category": "engagement",
+                "severity": "info",
+                "check": "貼文是否邀請回覆？（回覆 ≈ Threads 50% 觀看量）",
+                "pass_criteria": "以問題結尾或邀請分享個人經驗",
+                "auto_fixable": False,
+                "fix_method": "加入追問或「你的經驗是什麼？」類提示",
             },
         ]
 
