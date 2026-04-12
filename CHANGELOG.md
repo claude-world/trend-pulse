@@ -1,5 +1,73 @@
 # Changelog
 
+## [2.0.0] - 2026-04-13
+
+### Added
+
+**Plugin System (Phase 0)**
+- New `plugins/` architecture with `PluginSource` base class and `PluginRegistry` auto-discovery
+- 17 new plugin sources: Weibo, YouTube Trending, Threads, X/Twitter, TikTok, LINE Today TW, Mobile01, Bahamut, ETtoday, Yahoo TW, UDN, CoinMarketCap, DexScreener, Pinterest, LinkedIn Trending, Indie Hackers, Xiaohongshu
+- Total: **37 trend sources** (20 built-in + 17 plugins)
+- Plugin categories: `global`, `tw`, `dev`, `crypto`, `social`, `professional`
+
+**Trend Intelligence Core (Phase 1)**
+- `core/vector/simple.py` — pure-Python TF-IDF vector store with similarity search and O(n²) clustering (runs in thread executor)
+- `core/intelligence/lifecycle.py` — 4-stage lifecycle prediction (emerging/peak/declining/fading) with velocity/acceleration analysis
+- `core/intelligence/clusters.py` — cross-source trend clustering with `TrendCluster` model and `to_dict()` serialization
+- 5 new MCP tools: `search_semantic`, `get_trend_clusters`, `get_lifecycle_prediction`, `list_sources_extended`, `get_trend_velocity`
+
+**Agentic Content Factory (Phase 2)**
+- `core/agents/workflow.py` — 6-agent LangGraph-style workflow: researcher → strategist → writer → optimizer → compliance checker → distributor
+- `core/scoring/hybrid.py` — Hybrid Scoring 2.0:
+  - L1: heuristic (patent-based, always on)
+  - L2: Claude API judge (optional, requires `ANTHROPIC_API_KEY`, 15s timeout)
+  - L3: RAG history (SQLite-based pattern matching)
+  - Auto-degrades to pure heuristic without API key
+- 8 new MCP tools: `run_content_workflow`, `get_ab_variants`, `get_campaign_calendar`, `score_content_hybrid`, `adapt_content`, `generate_hashtags`, `analyze_viral_factors`, `batch_score_content`
+- Platform support expanded to 8: Threads, Instagram, Facebook, X, TikTok, LinkedIn, YouTube Shorts, Xiaohongshu
+
+**Web Dashboard + Notifications (Phase 3)**
+- `dashboard/app.py` — Streamlit dashboard with 4 pages: Realtime, Clusters, Campaign, History
+- `dashboard/api.py` — FastAPI REST API with 12 endpoints (`/trending`, `/search`, `/sources`, `/history`, `/snapshot`, `/clusters`, `/lifecycle/{keyword}`, `/content/score`, `/health`, etc.)
+- `notifications/channels.py` — 5 notification channels: Discord Webhook, Telegram Bot, LINE Notify, Email SMTP, Generic Webhook
+- 5 new MCP tools: `get_trend_report`, `compare_trends`, `get_source_status`, `send_notification`, `export_data`
+- **Total MCP tools: 29** (was 11)
+
+**Infrastructure**
+- `Dockerfile`, `Dockerfile.dashboard`, `docker-compose.yml` — one-command Docker Compose deployment (api + worker + dashboard)
+- `[dashboard]` and `[llm]` pip extras added
+- `asyncio.gather(return_exceptions=True)` parallelism throughout aggregator, server, and scoring
+
+**Tests**
+- **291 tests** (was ~183): added `test_core_intelligence.py`, `test_phase2_3.py`, `test_gap_fill.py`, `test_plugins.py`
+- Full coverage: vector store, lifecycle, clustering, hybrid scoring, all 6 workflow agents, all 29 MCP tools, SSRF guard, DB cleanup
+
+### Changed
+
+- `TrendAggregator.trending()` and `search()` now use `asyncio.gather` for true parallel source fetching
+- `TrendDB` now requires context manager (`async with`) — all methods raise `RuntimeError` outside it
+- `pyproject.toml` description and classifiers updated to reflect v2.0.0 scope
+
+### Fixed
+
+- SSRF vulnerability in `render_page`: added scheme whitelist (http/https only) + private/loopback IP block
+- Prompt injection in LLM judge: content isolated via `system` param, not interpolated into template
+- YouTube InnerTube: replaced catastrophic-backtracking `re.DOTALL` regex with safe `json.JSONDecoder().raw_decode()` approach
+- `dashboard/api.py`: `list_sources()` called twice on `/sources` endpoint — cached in variable
+- `lifecycle.py`: collapsed two redundant PEAK branches; removed unreachable dead code
+- `weibo.py`: items with `heat=0` now get rank-based score instead of 0.0
+- All MCP tools with `count`/`hours`/`days` parameters now clamp input to safe bounds
+- `notifications/channels.py`: EmailSMTP uses `charset="utf-8"`; Telegram drops `parse_mode: Markdown` to prevent 400 errors on special chars
+
+### Security
+
+- SSRF guard in `render_page` (scheme whitelist + `ipaddress` library private IP check)
+- Prompt injection isolation in hybrid scoring LLM judge (`system` param separation)
+- `x_trending.py`: removed hardcoded bearer token fallback — empty string short-circuits guest API call
+- `threads.py`: added recursion depth guard (`depth > 25`) in `_walk()` to prevent stack overflow on malformed responses
+
+---
+
 ## [0.5.3] - 2026-03-22
 
 ### Added
