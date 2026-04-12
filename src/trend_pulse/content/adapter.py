@@ -121,6 +121,71 @@ PLATFORM_SPECS = {
         },
         "best_times": ["09:00", "13:00", "16:00"],
     },
+    "x": {
+        "max_chars": 280,
+        "strengths": ["real-time", "breaking-news", "threads", "debate"],
+        "format": {
+            "zh-TW": "極簡文字 + 強 Hook + 話題標籤（#）",
+            "en": "Ultra-concise + strong hook + hashtags",
+        },
+        "algo_priority": {
+            "zh-TW": "回覆 > 轉推 > 按讚（互動深度優先）",
+            "en": "Replies > Retweets > Likes (engagement depth first)",
+        },
+        "best_times": ["08:00", "12:00", "17:00", "21:00"],
+    },
+    "tiktok": {
+        "max_chars": 2200,
+        "strengths": ["short-video", "viral", "trends", "youth"],
+        "format": {
+            "zh-TW": "短影片字幕 + 強 Hook（前 3 秒決勝負）+ 挑戰標籤",
+            "en": "Short video caption + strong 3-sec hook + challenge hashtags",
+        },
+        "algo_priority": {
+            "zh-TW": "完播率 > 分享 > 評論 > 按讚（算法以完播率為主）",
+            "en": "Completion rate > Shares > Comments > Likes (completion rate dominates)",
+        },
+        "best_times": ["19:00", "21:00", "12:00"],
+    },
+    "linkedin": {
+        "max_chars": 3000,
+        "strengths": ["professional", "thought-leadership", "B2B", "career"],
+        "format": {
+            "zh-TW": "專業洞見 + 數據支撐 + 個人故事（3-5 段落）",
+            "en": "Professional insight + data-backed + personal story (3-5 paragraphs)",
+        },
+        "algo_priority": {
+            "zh-TW": "停留時間 + 評論品質 + 第一小時互動",
+            "en": "Dwell time + comment quality + first-hour engagement",
+        },
+        "best_times": ["08:00", "12:00", "17:30"],
+    },
+    "youtube": {
+        "max_chars": 5000,
+        "strengths": ["long-video", "search-seo", "evergreen", "tutorial"],
+        "format": {
+            "zh-TW": "SEO 標題 + 時間戳 + 前 3 行強 Hook（展開前可見）",
+            "en": "SEO title + timestamps + 3-line hook before fold",
+        },
+        "algo_priority": {
+            "zh-TW": "點擊率 × 平均觀看時長（兩者並重）",
+            "en": "CTR × average watch time (both equally weighted)",
+        },
+        "best_times": ["15:00", "18:00", "20:00"],
+    },
+    "xiaohongshu": {
+        "max_chars": 1000,
+        "strengths": ["lifestyle", "beauty", "food", "travel", "discovery"],
+        "format": {
+            "zh-TW": "情境感圖片 + 標題關鍵字 + 正文 + tag 標籤（#）",
+            "en": "Lifestyle imagery + keyword title + body + hashtags",
+        },
+        "algo_priority": {
+            "zh-TW": "收藏 > 評論 > 按讚（收藏率是核心指標）",
+            "en": "Saves > Comments > Likes (save rate is the key metric)",
+        },
+        "best_times": ["12:00", "20:00", "22:00"],
+    },
 }
 
 

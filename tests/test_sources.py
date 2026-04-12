@@ -762,11 +762,11 @@ class TestSourceRegistry:
 
 
 class TestAggregator:
-    def test_list_sources_returns_20(self):
+    def test_list_sources_returns_at_least_20(self):
         from trend_pulse.aggregator import TrendAggregator
         agg = TrendAggregator()
         sources = agg.list_sources()
-        assert len(sources) == 20
+        assert len(sources) >= 20  # 20 built-in + plugins
 
     def test_select_subset(self):
         from trend_pulse.aggregator import TrendAggregator
@@ -778,14 +778,14 @@ class TestAggregator:
         from trend_pulse.aggregator import TrendAggregator
         agg = TrendAggregator()
         selected = agg._select(None)
-        assert len(selected) == 20
+        assert len(selected) >= 20  # 20 built-in + plugins
 
     def test_available_sources(self):
         from trend_pulse.aggregator import TrendAggregator
         agg = TrendAggregator()
         assert "hackernews" in agg.available_sources
         assert "dcard" in agg.available_sources
-        assert len(agg.available_sources) == 20
+        assert len(agg.available_sources) >= 20
 
 
 # ═══════════════════════════════════════════════════════

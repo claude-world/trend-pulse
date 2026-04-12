@@ -1,0 +1,87 @@
+version: "3.9"
+
+# TrendPulse AI — Docker Compose deployment
+#
+# Quick start:
+#   docker compose up           # SQLite mode (default, zero-config)
+#   docker compose up dashboard # Dashboard only
+#
+# Environment:
+#   Copy .env.example to .env and fill in optional credentials.
+#   All credentials are optional — the system degrades gracefully.
+
+services:
+  # ──────────────────────────────────────
+  # MCP Server (primary API)
+  # ──────────────────────────────────────
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: trend-pulse-server
+    ports:
+      - "8080:8080"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - CF_ACCOUNT_ID=${CF_ACCOUNT_ID:-}
+      - CF_API_TOKEN=${CF_API_TOKEN:-}
+    volumes:
+      - trend_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import trend_pulse"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ──────────────────────────────────────
+  # Background worker (trend snapshots)
+  # ──────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      python3 -c "
+      import asyncio, time
+      from trend_pulse.aggregator import TrendAggregator
+
+      async def run():
+          agg = TrendAggregator()
+          while True:
+              await agg.snapshot(count=20)
+              print('Snapshot saved', flush=True)
+              await asyncio.sleep(3600)  # Every hour
+
+      asyncio.run(run())
+      "
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - trend_data:/app/data
+    restart: unless-stopped
+    depends_on:
+      - mcp
+
+  # ──────────────────────────────────────
+  # Web Dashboard (Streamlit)
+  # ──────────────────────────────────────
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - trend_data:/app/data
+    restart: unless-stopped
+    command: streamlit run src/trend_pulse/dashboard/app.py --server.port=8501 --server.address=0.0.0.0
+
+volumes:
+  trend_data:
+    driver: local

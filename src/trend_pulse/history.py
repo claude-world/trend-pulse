@@ -52,8 +52,14 @@ class TrendDB:
             await self._db.close()
             self._db = None
 
+    def _require_db(self) -> None:
+        """Raise if the DB connection is not initialized (use 'async with TrendDB() as db')."""
+        if self._db is None:
+            raise RuntimeError("TrendDB not initialized — use 'async with TrendDB() as db:'")
+
     async def save_snapshot(self, items: list[TrendItem]) -> int:
         """Save a batch of TrendItems as a snapshot. Returns count saved."""
+        self._require_db()
         rows = [
             (item.source, item.keyword, item.score, item.traffic,
              item.url, item.category, json.dumps(item.metadata, ensure_ascii=False))
@@ -70,6 +76,8 @@ class TrendDB:
         self, keyword: str, days: int = 30, source: str = ""
     ) -> list[dict]:
         """Get historical snapshots for a keyword."""
+        self._require_db()
+        days = max(1, days)  # guard against 0 or negative values producing invalid SQL
         # Escape LIKE wildcards in user input to prevent injection
         safe_keyword = keyword.replace("%", "\\%").replace("_", "\\_")
         query = """
@@ -108,6 +116,7 @@ class TrendDB:
         Returns dict keyed by "keyword::source" with {score, timestamp, source}.
         Uses a single batch query instead of per-keyword queries.
         """
+        self._require_db()
         if not keywords:
             return {}
         # Deduplicate keywords for the query
@@ -141,6 +150,7 @@ class TrendDB:
 
     async def cleanup(self, retention_days: int = 90) -> int:
         """Delete snapshots older than retention_days. Returns count deleted."""
+        self._require_db()
         cursor = await self._db.execute(
             "DELETE FROM snapshots WHERE timestamp < datetime('now', ?)",
             (f"-{retention_days} days",),

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -11,22 +12,47 @@ from .sources import ALL_SOURCES
 from .history import TrendDB
 from .velocity import enrich_with_velocity
 
+logger = logging.getLogger(__name__)
+
 
 class TrendAggregator:
-    """Fetch and merge trending data from multiple free sources."""
+    """Fetch and merge trending data from multiple free sources.
 
-    def __init__(self, sources: list[type[TrendSource]] | None = None):
+    Automatically loads plugin sources from trend_pulse.plugins.sources.*
+    in addition to the built-in 20 sources. Plugins are loaded gracefully:
+    missing optional dependencies are silently skipped.
+    """
+
+    def __init__(
+        self,
+        sources: list[type[TrendSource]] | None = None,
+        include_plugins: bool = True,
+    ):
         self.source_classes = sources or ALL_SOURCES
         self._instances: dict[str, TrendSource] = {}
         for cls in self.source_classes:
             self._instances[cls.name] = cls()
+
+        # Load plugin sources (v2.0) — skips on missing optional deps
+        if include_plugins and sources is None:
+            try:
+                from .plugins.registry import PluginRegistry
+                plugin_instances = PluginRegistry.load_all(skip_errors=True)
+                # Plugins don't override built-in sources with same name
+                for name, inst in plugin_instances.items():
+                    if name not in self._instances:
+                        self._instances[name] = inst
+                logger.debug("Loaded %d plugin sources", len(plugin_instances))
+            except Exception as exc:
+                logger.debug("Plugin loading skipped: %s", exc)
 
     @property
     def available_sources(self) -> list[str]:
         return list(self._instances.keys())
 
     def list_sources(self) -> list[dict]:
-        return [cls.info() for cls in self.source_classes]
+        """List all sources (built-in + plugins) with their metadata."""
+        return [type(inst).info() for inst in self._instances.values()]
 
     async def trending(
         self,
@@ -45,21 +71,25 @@ class TrendAggregator:
         """
         selected = self._select(sources)
 
-        tasks = {
-            name: asyncio.create_task(src.fetch_trending(geo=geo, count=count))
-            for name, src in selected.items()
-        }
+        names = list(selected.keys())
+        coros = [src.fetch_trending(geo=geo, count=count) for src in selected.values()]
 
         results: dict[str, list[dict]] = {}
         errors: dict[str, str] = {}
         all_items: list[TrendItem] = []
 
-        for name, task in tasks.items():
-            try:
-                items = await task
-                all_items.extend(items)
-            except Exception as e:
-                errors[name] = str(e)
+        # Report any requested source names that don't exist
+        if sources:
+            for n in sources:
+                if n not in self._instances:
+                    errors[n] = "Unknown source name"
+
+        raw_results = await asyncio.gather(*coros, return_exceptions=True)
+        for name, result in zip(names, raw_results):
+            if isinstance(result, Exception):
+                errors[name] = str(result)
+            else:
+                all_items.extend(result)
 
         # History + velocity enrichment
         if all_items:
@@ -88,8 +118,8 @@ class TrendAggregator:
             "geo": geo,
             "sources_ok": list(results.keys()),
             "sources_error": errors,
-            "merged_top": [it.to_dict() for it in merged[:count]],
-            "by_source": results,
+            "merged": [it.to_dict() for it in merged[:count]],
+            "sources": results,
         }
 
     async def search(
@@ -111,13 +141,14 @@ class TrendAggregator:
         errors: dict[str, str] = {}
         all_items: list[TrendItem] = []
 
-        for name, task in tasks.items():
-            try:
-                items = await task
-                results[name] = [it.to_dict() for it in items]
-                all_items.extend(items)
-            except Exception as e:
-                errors[name] = str(e)
+        names_list = list(tasks.keys())
+        raw_results = await asyncio.gather(*tasks.values(), return_exceptions=True)
+        for name, result in zip(names_list, raw_results):
+            if isinstance(result, Exception):
+                errors[name] = str(result)
+            else:
+                results[name] = [it.to_dict() for it in result]
+                all_items.extend(result)
 
         merged = sorted(all_items, key=lambda x: x.score, reverse=True)
 
@@ -126,8 +157,8 @@ class TrendAggregator:
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "sources_ok": list(results.keys()),
             "sources_error": errors,
-            "merged_top": [it.to_dict() for it in merged[:20]],
-            "by_source": results,
+            "merged": [it.to_dict() for it in merged[:20]],
+            "sources": results,
         }
 
     async def history(
@@ -161,4 +192,5 @@ class TrendAggregator:
     def _select(self, names: list[str] | None) -> dict[str, TrendSource]:
         if not names:
             return self._instances
-        return {n: self._instances[n] for n in names if n in self._instances}
+        selected = {n: self._instances[n] for n in names if n in self._instances}
+        return selected

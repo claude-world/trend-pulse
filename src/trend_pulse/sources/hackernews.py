@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import httpx
 
 from .base import TrendSource, TrendItem
@@ -23,11 +25,15 @@ class HackerNewsSource(TrendSource):
             resp.raise_for_status()
             story_ids = resp.json()[:count]
 
-            # Fetch story details in parallel
+            # Fetch all story details in parallel (was serial — each round-trip ~200ms)
+            detail_tasks = [
+                client.get(f"{self.HN_API}/item/{sid}.json") for sid in story_ids
+            ]
+            responses = await asyncio.gather(*detail_tasks, return_exceptions=True)
+
             items: list[TrendItem] = []
-            for sid in story_ids:
-                r = await client.get(f"{self.HN_API}/item/{sid}.json")
-                if r.status_code != 200:
+            for sid, r in zip(story_ids, responses):
+                if isinstance(r, Exception) or r.status_code != 200:
                     continue
                 story = r.json()
                 if not story or story.get("type") != "story":

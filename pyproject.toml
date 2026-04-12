@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "trend-pulse"
-version = "0.5.3"
-description = "Free trending topics aggregator and AI content guides with 20 sources, zero auth, patent-based scoring, plus a CLI, MCP server, and Python library."
+version = "2.0.0"
+description = "Global open-source Agentic Trend Intelligence Platform — 35+ sources, plugin system, vector search, trend clustering, lifecycle prediction, 6-agent content factory, web dashboard, and 23-tool MCP server."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
@@ -36,8 +36,12 @@ Repository = "https://github.com/claude-world/trend-pulse"
 mcp = ["mcp[cli]>=1.0"]
 google = ["trendspyg", "pytrends>=4.9"]
 content = []  # Pure Python + httpx (already in core deps)
-browser = []  # CF Browser Rendering — uses httpx (already in core). Needs CF_ACCOUNT_ID + CF_API_TOKEN env vars.
-all = ["mcp[cli]>=1.0", "trendspyg", "pytrends>=4.9"]
+browser = ["playwright>=1.40"]  # TikTok, Instagram JS-heavy pages. Run: playwright install chromium
+social = ["twikit>=1.0"]  # X/Twitter trending (guest token, no login required)
+zh = ["beautifulsoup4>=4.12"]   # Enhanced Chinese HTML parsing
+dashboard = ["streamlit>=1.30", "plotly>=5.0", "fastapi>=0.100", "uvicorn>=0.24", "pandas>=2.0"]  # Web dashboard + REST API
+llm = ["anthropic>=0.35"]  # L2 LLM judge for Hybrid Scoring 2.0
+all = ["mcp[cli]>=1.0", "trendspyg", "pytrends>=4.9", "twikit>=1.0", "playwright>=1.40", "beautifulsoup4>=4.12", "streamlit>=1.30", "plotly>=5.0", "fastapi>=0.100", "uvicorn>=0.24", "pandas>=2.0", "anthropic>=0.35"]
 
 [project.scripts]
 trend-pulse = "trend_pulse.cli:main"

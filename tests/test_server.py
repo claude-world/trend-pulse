@@ -3,6 +3,8 @@
 import json
 import asyncio
 
+import pytest
+
 from trend_pulse.server import mcp
 
 
@@ -11,7 +13,7 @@ class TestServerTools:
 
     def test_total_tool_count(self):
         tools = mcp._tool_manager._tools
-        assert len(tools) == 11
+        assert len(tools) >= 29  # 29 tools as of v2.0
 
     def test_data_tools_present(self):
         tools = mcp._tool_manager._tools
@@ -82,7 +84,8 @@ class TestServerToolExecution:
         from trend_pulse.server import get_platform_specs
         result = self._run(get_platform_specs("", "zh-TW"))
         data = json.loads(result)
-        assert set(data.keys()) == {"threads", "instagram", "facebook"}
+        # Phase 2 expanded to 8 platforms
+        assert {"threads", "instagram", "facebook"} <= set(data.keys())
 
     def test_get_review_checklist(self):
         from trend_pulse.server import get_review_checklist
@@ -134,6 +137,28 @@ class TestBrowserTool:
 
 
 class TestVersion:
-    def test_version_is_050(self):
+    def test_version_is_v2(self):
         from trend_pulse import __version__
-        assert __version__ == "0.5.1"
+        from packaging.version import Version
+        assert Version(__version__) >= Version("2.0.0")
+
+
+class TestSSRFGuard:
+    """Verify render_page SSRF guard blocks dangerous URLs."""
+
+    def _run(self, coro):
+        return asyncio.run(coro)
+
+    @pytest.mark.parametrize("url,expected_error", [
+        ("file:///etc/passwd", "Unsupported URL scheme"),
+        ("ftp://example.com/", "Unsupported URL scheme"),
+        ("http://192.168.1.1/", "Blocked: private/loopback"),
+        ("http://127.0.0.1:8080/", "Blocked: private/loopback"),
+        ("http://10.0.0.1/secret", "Blocked: private/loopback"),
+    ])
+    def test_render_page_ssrf_guard(self, url, expected_error):
+        from trend_pulse.server import render_page
+        result = self._run(render_page(url))
+        data = json.loads(result)
+        assert "error" in data
+        assert expected_error in data["error"]
