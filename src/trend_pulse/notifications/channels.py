@@ -7,9 +7,9 @@ import os
 
 import httpx
 
-logger = logging.getLogger(__name__)
-
 from .base import NotificationChannel, NotificationPayload
+
+logger = logging.getLogger(__name__)
 
 
 class DiscordWebhook(NotificationChannel):

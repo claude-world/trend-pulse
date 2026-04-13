@@ -12,7 +12,7 @@ Requires:
 from __future__ import annotations
 
 try:
-    from fastapi import FastAPI, HTTPException, Query
+    from fastapi import FastAPI, Query
     from fastapi.middleware.cors import CORSMiddleware
     from pydantic import BaseModel
     _FASTAPI_AVAILABLE = True

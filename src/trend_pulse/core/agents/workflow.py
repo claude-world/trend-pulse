@@ -25,7 +25,7 @@ import re
 from typing import TYPE_CHECKING, Any, TypedDict
 
 if TYPE_CHECKING:
-    from ...sources.base import TrendItem
+    pass  # No runtime imports needed
 
 
 # ──────────────────────────────────────────────
@@ -229,12 +229,16 @@ async def ab_optimizer_agent(state: WorkflowState) -> WorkflowState:
 def _simple_score(text: str, platform: str) -> float:
     """Fast heuristic score for A/B ranking."""
     score = 50.0
-    if "?" in text: score += 10
-    if re.search(r"[^\w\s]{1,2}", text[:50]): score += 10  # emoji in first 50 chars
-    if "\n" in text: score += 5
+    if "?" in text:
+        score += 10
+    if re.search(r"[^\w\s]{1,2}", text[:50]):  # emoji in first 50 chars
+        score += 10
+    if "\n" in text:
+        score += 5
     limit = _CHAR_LIMITS.get(platform, 500)
     ratio = len(text) / limit
-    if 0.3 <= ratio <= 0.8: score += 15
+    if 0.3 <= ratio <= 0.8:
+        score += 15
     return min(score, 100.0)
 
 

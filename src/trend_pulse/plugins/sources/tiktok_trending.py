@@ -9,7 +9,6 @@ pip install 'trend-pulse[browser]' or pip install playwright && playwright insta
 
 from __future__ import annotations
 
-import json
 import re
 
 import httpx

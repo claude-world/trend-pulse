@@ -6,7 +6,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ...sources.base import TrendItem
+    pass  # No runtime imports needed
 
 
 class LifecycleStage(str, Enum):
@@ -65,7 +65,7 @@ def predict_lifecycle(
     mid = max(1, len(deltas) // 2)
     first_v = sum(deltas[:mid]) / mid if deltas[:mid] else 0.0
     second_v = sum(deltas[mid:]) / max(len(deltas[mid:]), 1) if deltas[mid:] else 0.0
-    acceleration = second_v - first_v
+    _acceleration = second_v - first_v  # reserved for future use
 
     # Peak score in the window
     peak = max(recent)

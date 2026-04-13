@@ -17,7 +17,7 @@ from ...sources.base import TrendItem
 
 try:
     # Optional: xiaohongshu-cli provides better API access
-    import xiaohongshu  # type: ignore[import]
+    import xiaohongshu as _xhs_module  # type: ignore[import]  # noqa: F401
     _XHS_AVAILABLE = True
 except ImportError:
     _XHS_AVAILABLE = False

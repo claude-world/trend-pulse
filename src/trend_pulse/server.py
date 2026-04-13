@@ -1126,7 +1126,7 @@ async def analyze_viral_factors(
         JSON with dimension scores, per-signal breakdown, strengths,
         weaknesses, and top 3 improvement suggestions.
     """
-    from .core.scoring.hybrid import HybridScorer, _l1_heuristic, _HOOK_PATTERNS, _CTA_PATTERNS, _ENGAGEMENT_PATTERNS
+    from .core.scoring.hybrid import HybridScorer
     import re
 
     scorer = HybridScorer()

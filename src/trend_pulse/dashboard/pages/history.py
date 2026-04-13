@@ -23,7 +23,7 @@ def render(agg, run_fn):
     if st.button("Analyse", type="primary", key="hi_go"):
         with st.spinner("Querying..."):
             try:
-                from ...core.intelligence.lifecycle import predict_lifecycle, lifecycle_emoji, lifecycle_color
+                from ...core.intelligence.lifecycle import predict_lifecycle, lifecycle_emoji
 
                 hist = run_fn(agg.history(keyword=keyword, days=days, source=source))
                 # history() returns newest-first; reverse to oldest-first for lifecycle/charts

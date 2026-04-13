@@ -7,7 +7,6 @@ Uses their public RSS feed for trending discussions.
 from __future__ import annotations
 
 import re
-import xml.etree.ElementTree as ET
 
 import httpx
 

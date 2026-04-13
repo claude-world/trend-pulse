@@ -15,11 +15,10 @@ import json
 import logging
 import os
 import re
-
-logger = logging.getLogger(__name__)
-
 from dataclasses import dataclass, field
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # Optional: Anthropic SDK for L2 LLM Judge
 try:
@@ -68,12 +67,18 @@ class ScoreResult:
 
 
 def _grade(score: float) -> str:
-    if score >= 90: return "S"
-    if score >= 80: return "A"
-    if score >= 70: return "B+"
-    if score >= 60: return "B"
-    if score >= 50: return "C+"
-    if score >= 40: return "C"
+    if score >= 90:
+        return "S"
+    if score >= 80:
+        return "A"
+    if score >= 70:
+        return "B+"
+    if score >= 60:
+        return "B"
+    if score >= 50:
+        return "C+"
+    if score >= 40:
+        return "C"
     return "D"
 
 
