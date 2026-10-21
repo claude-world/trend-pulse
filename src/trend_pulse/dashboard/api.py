@@ -19,13 +19,14 @@ try:
 except ImportError:
     _FASTAPI_AVAILABLE = False
 
+from .. import __version__
 from ..aggregator import TrendAggregator
 
 if _FASTAPI_AVAILABLE:
     app = FastAPI(
         title="TrendPulse AI API",
         description="REST API for trend data, clustering, and content generation",
-        version="2.0.0",
+        version=__version__,
     )
 
     app.add_middleware(
@@ -159,7 +160,6 @@ if _FASTAPI_AVAILABLE:
     @app.get("/health")
     async def health():
         """API health check."""
-        from .. import __version__
         return {
             "status": "ok",
             "version": __version__,

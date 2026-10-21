@@ -11,7 +11,7 @@ from __future__ import annotations
 try:
     from twikit import Client as TwikitClient  # type: ignore[import]
     _TWIKIT_AVAILABLE = True
-except ImportError:
+except Exception:  # not installed, or a broken transitive dep (js2py fails to import on Python 3.15)
     _TWIKIT_AVAILABLE = False
 
 import asyncio

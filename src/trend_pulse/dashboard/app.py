@@ -21,6 +21,10 @@ try:
 except ImportError:
     _STREAMLIT_AVAILABLE = False
 
+# `streamlit run` executes this file as a top-level script, so package imports
+# must be absolute (relative imports fail with "no known parent package").
+from trend_pulse import __version__
+
 
 def _run(coro):
     """Run async coroutine from sync Streamlit context.
@@ -37,7 +41,7 @@ def _run(coro):
 @st.cache_resource
 def _get_aggregator():
     """Cache TrendAggregator across reruns — avoids rebuilding plugin registry on every click."""
-    from ..aggregator import TrendAggregator
+    from trend_pulse.aggregator import TrendAggregator
     return TrendAggregator()
 
 
@@ -55,7 +59,7 @@ def main():
 
     # ── Sidebar ──
     st.sidebar.title("TrendPulse AI")
-    st.sidebar.caption("v2.0.0 · Global Trend Intelligence")
+    st.sidebar.caption(f"v{__version__} · Global Trend Intelligence")
 
     page = st.sidebar.selectbox(
         "Navigation",
@@ -112,7 +116,7 @@ def _page_realtime():
                         textposition="outside",
                     ))
                     fig.update_layout(height=max(400, len(merged) * 20), margin=dict(l=200))
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
 
                     # Source breakdown
                     sources_data = data.get("sources", {})
@@ -124,7 +128,7 @@ def _page_realtime():
                             y=list(source_counts.values()),
                             labels={"x": "Source", "y": "Items"},
                         )
-                        st.plotly_chart(fig2, use_container_width=True)
+                        st.plotly_chart(fig2, width="stretch")
                 else:
                     st.warning("No trends returned.")
             except Exception as e:
@@ -144,8 +148,8 @@ def _page_clusters():
     if st.button("Build Clusters", type="primary"):
         with st.spinner("Clustering trends..."):
             try:
-                from ..core.intelligence.clusters import cluster_trends
-                from ..sources.base import TrendItem
+                from trend_pulse.core.intelligence.clusters import cluster_trends
+                from trend_pulse.sources.base import TrendItem
 
                 agg = _get_aggregator()
                 raw = _run(agg.trending(count=count))
@@ -193,7 +197,7 @@ def _page_content_factory():
     if st.button("Generate Content", type="primary"):
         with st.spinner("Running 6-agent workflow..."):
             try:
-                from ..core.agents.workflow import run_content_workflow
+                from trend_pulse.core.agents.workflow import run_content_workflow
                 state = _run(run_content_workflow(
                     platforms=platforms_sel or ["threads"],
                     brand_voice=brand_voice,
@@ -203,7 +207,8 @@ def _page_content_factory():
                 final = state.get("final_content", {})
                 for plat, content in final.items():
                     st.subheader(f"{plat.capitalize()}")
-                    st.text_area("", content, height=150, key=f"content_{plat}")
+                    st.text_area(f"{plat} content", content, height=150, key=f"content_{plat}",
+                                 label_visibility="collapsed")
                     char_limits = {
                         "threads": 500, "x": 280, "instagram": 2200,
                         "linkedin": 3000, "tiktok": 2200, "youtube": 5000,
@@ -229,7 +234,7 @@ def _page_history():
     if st.button("Analyse", type="primary"):
         with st.spinner("Querying history..."):
             try:
-                from ..core.intelligence.lifecycle import predict_lifecycle, lifecycle_emoji
+                from trend_pulse.core.intelligence.lifecycle import predict_lifecycle, lifecycle_emoji
 
                 agg = _get_aggregator()
                 hist = _run(agg.history(keyword=keyword, days=days))
@@ -250,7 +255,7 @@ def _page_history():
                     ts = [r.get("timestamp", i) for i, r in enumerate(records)]
                     fig = px.line(x=ts, y=scores, labels={"x": "Time", "y": "Score"},
                                   title=f"{keyword} — Score Over Time")
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
                 else:
                     st.info(f"No history found for '{keyword}'. Try taking a snapshot first.")
             except Exception as e:

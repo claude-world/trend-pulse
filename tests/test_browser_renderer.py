@@ -245,7 +245,7 @@ class TestMCPRenderPage:
 
     def test_render_page_tool_registered(self):
         from trend_pulse.server import mcp
-        tools = mcp._tool_manager._tools
+        tools = {tool.name for tool in self._run(mcp.list_tools())}
         assert "render_page" in tools, "render_page MCP tool should be registered"
 
     def test_render_page_not_configured(self):

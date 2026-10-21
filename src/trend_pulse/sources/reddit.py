@@ -22,7 +22,7 @@ class RedditSource(TrendSource):
     name = "reddit"
     description = "Reddit - popular posts across all subreddits"
     requires_auth = False
-    rate_limit = "strict (anonymous RSS, about 1 req per 10s)"
+    rate_limit = "strict (anonymous RSS, about 1 req/min)"
 
     URL = "https://www.reddit.com/r/popular/.rss"
     SEARCH_URL = "https://www.reddit.com/search.rss"

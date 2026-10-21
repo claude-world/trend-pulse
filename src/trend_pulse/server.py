@@ -6,13 +6,14 @@ import json
 from datetime import datetime, timezone
 
 try:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer
 except ImportError:
-    raise ImportError("Install mcp: pip install 'trend-pulse[mcp]'")
+    raise ImportError("Install mcp>=2: pip install 'trend-pulse[mcp]'")
 
+from . import __version__
 from .aggregator import TrendAggregator
 
-mcp = FastMCP("trend-pulse")
+mcp = MCPServer("trend-pulse", version=__version__)
 
 _agg = TrendAggregator()
 
@@ -1013,7 +1014,7 @@ async def send_notification(
     - discord:  DISCORD_WEBHOOK_URL
     - telegram: TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID
     - webhook:  GENERIC_WEBHOOK_URL
-    - line:     LINE_NOTIFY_TOKEN
+    - line:     LINE_NOTIFY_TOKEN (LINE Notify was shut down on 2025-03-31; sends fail)
     - email:    SMTP_HOST + SMTP_USER + SMTP_PASS + SMTP_FROM + SMTP_TO
 
     Args:
@@ -1436,7 +1437,24 @@ async def batch_score_content(
 
 
 def main():
-    mcp.run()
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="trend-pulse-server",
+        description="trend-pulse MCP server (stdio by default; HTTP transports for Docker/remote use)",
+    )
+    parser.add_argument(
+        "--transport", choices=["stdio", "streamable-http", "sse"], default="stdio",
+        help="MCP transport (default: stdio)",
+    )
+    parser.add_argument("--host", default="127.0.0.1", help="Bind address for HTTP transports (default: 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=8080, help="Port for HTTP transports (default: 8080)")
+    args = parser.parse_args()
+
+    if args.transport == "stdio":
+        mcp.run()
+    else:
+        mcp.run(transport=args.transport, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":

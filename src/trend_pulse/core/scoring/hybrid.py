@@ -229,7 +229,7 @@ async def _l2_llm_judge(content: str, platform: str) -> dict[str, float] | None:
     try:
         msg = await asyncio.wait_for(
             client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model="claude-haiku-5-5",
                 max_tokens=256,
                 system=_LLM_SYSTEM,
                 messages=[{"role": "user", "content": user_msg}],

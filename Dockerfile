@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 
@@ -14,4 +14,5 @@ ENV TREND_PULSE_DB=/app/data/history.db
 
 EXPOSE 8080
 
-CMD ["trend-pulse-server"]
+# Streamable HTTP MCP endpoint at http://<host>:8080/mcp (stdio would exit as soon as stdin closes)
+CMD ["trend-pulse-server", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8080"]

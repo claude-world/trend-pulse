@@ -209,6 +209,27 @@ class TestHybridScorer:
         assert "breakdown" in d
         assert "mode" in d
 
+    def test_llm_judge_blends_scores(self):
+        from types import SimpleNamespace
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from trend_pulse.core.scoring import hybrid
+
+        reply = ('{"hook_power": 90, "engagement_trigger": 80, "conversation_durability": 70,'
+                 ' "velocity_potential": 60, "format_score": 50, "reasoning": "ok"}')
+        client = MagicMock()
+        client.messages.create = AsyncMock(return_value=SimpleNamespace(content=[SimpleNamespace(text=reply)]))
+        with patch.object(hybrid, "_get_anthropic_client", return_value=client):
+            result = _run(hybrid.HybridScorer().score("Why AI matters?", "threads"))
+
+        kwargs = client.messages.create.await_args.kwargs
+        assert kwargs["model"] == "claude-haiku-5-5"
+        assert kwargs["system"] == hybrid._LLM_SYSTEM
+        # The post text goes in the user turn, never the system prompt
+        assert "Why AI matters?" in kwargs["messages"][0]["content"]
+        assert result.mode == "hybrid"
+        assert result.breakdown["hook_power"] != 90  # blended with the heuristic score
+
 
 # ═══════════════════════════════════════════════════════
 # ContentWorkflow

@@ -108,6 +108,9 @@ class GenericWebhook(NotificationChannel):
 class LineNotify(NotificationChannel):
     """Send notifications via LINE Notify API.
 
+    LINE Notify was shut down on 2025-03-31 and notify-api.line.me no longer
+    resolves, so send() returns False. Kept for API compatibility.
+
     Setup:
         notifier = LineNotify(token="...")
         # Or set LINE_NOTIFY_TOKEN environment variable.
