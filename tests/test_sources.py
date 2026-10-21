@@ -93,6 +93,30 @@ class TestGoogleTrendsSource:
         assert items[0].source == "google_trends"
         assert items[0].metadata["news"][0]["title"] == "Breaking AI News"
 
+    def test_fetch_trending_current_namespace(self):
+        """The feed's ht: namespace URI changed; traffic and news must still parse."""
+        from trend_pulse.sources.google_trends import GoogleTrendsSource
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <rss xmlns:ht="https://trends.google.com/trending/rss" version="2.0">
+          <channel>
+            <item>
+              <title>tigres - leon</title>
+              <ht:approx_traffic>200K+</ht:approx_traffic>
+              <ht:news_item>
+                <ht:news_item_title>Match preview</ht:news_item_title>
+                <ht:news_item_url>https://example.com/match</ht:news_item_url>
+                <ht:news_item_source>Example</ht:news_item_source>
+              </ht:news_item>
+            </item>
+          </channel>
+        </rss>"""
+        client = _mock_client([_text_resp(xml)])
+        with patch("httpx.AsyncClient", return_value=client):
+            items = _run(GoogleTrendsSource().fetch_trending(geo="US", count=5))
+        assert items[0].traffic == "200K+"
+        assert items[0].score == 40.0
+        assert items[0].metadata["news"][0]["url"] == "https://example.com/match"
+
     def test_info(self):
         from trend_pulse.sources.google_trends import GoogleTrendsSource
         info = GoogleTrendsSource.info()
@@ -249,6 +273,25 @@ class TestGitHubTrendingSource:
         assert items[0].metadata["stars_today"] == 42
         assert items[0].metadata["language"] == "Python"
 
+    def test_parse_html_skips_sponsor_link(self):
+        """The Sponsor button's /sponsors/<user> href precedes the repo title link."""
+        from trend_pulse.sources.github_trending import GitHubTrendingSource
+        html = '''
+        <article class="Box-row">
+            <div class="float-right d-flex">
+                <a href="/sponsors/someone" aria-label="Sponsor @someone">Sponsor</a>
+                <a href="/login?return_to=%2Fsomeone%2Frepo">Star</a>
+            </div>
+            <h2 class="h3 lh-condensed">
+                <a data-view-component="true" href="/someone/repo" class="Link">someone / repo</a>
+            </h2>
+            <span>7 stars today</span>
+        </article>
+        '''
+        items = GitHubTrendingSource()._parse_html(html, 20)
+        assert [it.keyword for it in items] == ["someone/repo"]
+        assert items[0].url == "https://github.com/someone/repo"
+
     def test_normalize_browser_data_dict(self):
         from trend_pulse.sources.github_trending import GitHubTrendingSource
         data = {"repositories": [
@@ -391,26 +434,55 @@ class TestNpmSource:
 # ═══════════════════════════════════════════════════════
 
 
+_REDDIT_FEED = """<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <category term="popular" label="r/popular"/>
+  <title>popular links</title>
+  <entry>
+    <author><name>/u/u1</name><uri>https://www.reddit.com/user/u1</uri></author>
+    <category term="test" label="r/test"/>
+    <id>t3_abc</id>
+    <link href="https://www.reddit.com/r/test/comments/abc/cool_post/" />
+    <published>2026-10-20T21:08:32+00:00</published>
+    <title>Cool Post</title>
+  </entry>
+  <entry>
+    <author><name>/u/u2</name></author>
+    <category term="news" label="r/news"/>
+    <link href="https://www.reddit.com/r/news/comments/def/second/" />
+    <title>Second Post</title>
+  </entry>
+</feed>"""
+
+
 class TestRedditSource:
-    def test_parse_posts(self):
+    def test_parse_feed(self):
         from trend_pulse.sources.reddit import RedditSource
-        children = [
-            {"data": {"title": "Cool Post", "score": 5000, "permalink": "/r/test/cool", "created_utc": 1741600000, "subreddit": "test", "author": "u1", "num_comments": 50, "upvote_ratio": 0.95}},
-        ]
-        items = RedditSource()._parse_posts(children)
+        items = RedditSource()._parse_feed(_REDDIT_FEED)
+        assert [it.keyword for it in items] == ["Cool Post", "Second Post"]
+        assert items[0].url == "https://www.reddit.com/r/test/comments/abc/cool_post/"
+        assert items[0].score == 100  # Rank-based: the feed has no vote counts
+        assert items[1].score == 95
+        assert items[0].metadata["subreddit"] == "test"
+        assert items[0].metadata["author"] == "u1"
+        assert items[0].published == "2026-10-20T21:08:32+00:00"
+
+    def test_fetch_trending_uses_atom_feed(self):
+        from trend_pulse.sources.reddit import RedditSource
+        client = _mock_client([_text_resp(_REDDIT_FEED)])
+        with patch("httpx.AsyncClient", return_value=client):
+            items = _run(RedditSource().fetch_trending(count=1))
         assert len(items) == 1
-        assert items[0].keyword == "Cool Post"
-        assert items[0].score == 10.0  # 5000/500, capped at 100
+        assert client.get.call_args[0][0] == "https://www.reddit.com/r/popular/.rss"
 
     def test_search(self):
         from trend_pulse.sources.reddit import RedditSource
-        resp = _json_resp({"data": {"children": [
-            {"data": {"title": "Search Result", "score": 100, "permalink": "/r/test/s", "created_utc": 1741600000, "subreddit": "test", "author": "u2", "num_comments": 5, "upvote_ratio": 0.9}},
-        ]}})
-        client = _mock_client([resp])
+        client = _mock_client([_text_resp(_REDDIT_FEED)])
         with patch("httpx.AsyncClient", return_value=client):
             items = _run(RedditSource().search("test"))
-        assert len(items) == 1
+        assert len(items) == 2
+        assert client.get.call_args[0][0] == "https://www.reddit.com/search.rss"
+        assert client.get.call_args[1]["params"]["q"] == "test"
 
 
 # ═══════════════════════════════════════════════════════
@@ -463,6 +535,25 @@ class TestDockerHubSource:
         assert len(items) == 1
         assert items[0].keyword == "nginx"
         assert items[0].traffic == "2.0B pulls"
+        assert client.get.call_args[1]["params"]["ordering"] == "pull_count"
+
+    def test_fetch_trending_retries_when_ordering_is_ascending(self):
+        """If "pull_count" ever sorts ascending again, retry with "-pull_count"."""
+        from trend_pulse.sources.dockerhub import DockerHubSource
+        ascending = _json_resp({"results": [
+            {"name": "tiny", "pull_count": 90_000},
+            {"name": "small", "pull_count": 120_000},
+        ]})
+        descending = _json_resp({"results": [
+            {"name": "nginx", "pull_count": 13_000_000_000},
+            {"name": "alpine", "pull_count": 12_000_000_000},
+        ]})
+        client = _mock_client([ascending, descending])
+        with patch("httpx.AsyncClient", return_value=client):
+            items = _run(DockerHubSource().fetch_trending(count=1))
+        assert [it.keyword for it in items] == ["nginx"]
+        orderings = [c[1]["params"]["ordering"] for c in client.get.call_args_list]
+        assert orderings == ["pull_count", "-pull_count"]
 
 
 # ═══════════════════════════════════════════════════════
@@ -480,6 +571,12 @@ class TestStackOverflowSource:
         assert len(items) == 1
         assert items[0].keyword == "How to use & in Python?"  # HTML unescaped
         assert items[0].score == 10.0
+
+    def test_parse_questions_downvoted_scores_zero(self):
+        from trend_pulse.sources.stackoverflow import StackOverflowSource
+        data = {"items": [{"title": "Unclear question", "score": -5, "view_count": 51}]}
+        items = StackOverflowSource()._parse_questions(data)
+        assert items[0].score == 0
 
     def test_search(self):
         from trend_pulse.sources.stackoverflow import StackOverflowSource
@@ -520,6 +617,39 @@ class TestArXivSource:
         assert items[0].metadata["authors"] == ["Alice", "Bob"]
         assert items[0].metadata["categories"] == ["cs.AI"]
 
+    def test_fetch_trending_falls_back_to_listing(self):
+        """A throttled export API (429/timeout) falls back to the official listing."""
+        import httpx
+        from trend_pulse.sources.arxiv import ArXivSource
+        listing = """<?xml version='1.0' encoding='UTF-8'?>
+        <feed xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns:dc="http://purl.org/dc/elements/1.1/"
+              xmlns="http://www.w3.org/2005/Atom">
+          <entry>
+            <id>oai:arXiv.org:2610.00001v1</id>
+            <title>New Agent Paper</title>
+            <link href="https://arxiv.org/abs/2610.00001"/>
+            <summary>arXiv:2610.00001v1 Announce Type: new
+Abstract: Agents do things.</summary>
+            <category term="cs.AI"/>
+            <arxiv:announce_type>new</arxiv:announce_type>
+            <dc:creator>Alice Smith, Bob Lee</dc:creator>
+          </entry>
+          <entry>
+            <id>oai:arXiv.org:2401.00002v3</id>
+            <title>Old Paper, New Version</title>
+            <link href="https://arxiv.org/abs/2401.00002"/>
+            <arxiv:announce_type>replace</arxiv:announce_type>
+          </entry>
+        </feed>"""
+        client = _mock_client([httpx.ReadTimeout("throttled"), _text_resp(listing)])
+        with patch("httpx.AsyncClient", return_value=client):
+            items = _run(ArXivSource().fetch_trending(count=5))
+        assert [it.keyword for it in items] == ["New Agent Paper"]  # replacements skipped
+        assert items[0].url == "https://arxiv.org/abs/2610.00001"
+        assert items[0].metadata["authors"] == ["Alice Smith", "Bob Lee"]
+        assert items[0].metadata["summary"] == "Agents do things."
+        assert client.get.call_args[0][0] == "https://rss.arxiv.org/atom/cs.AI+cs.CL+cs.LG"
+
     def test_search(self):
         from trend_pulse.sources.arxiv import ArXivSource
         xml = """<?xml version="1.0"?>
@@ -545,23 +675,52 @@ class TestArXivSource:
 # ═══════════════════════════════════════════════════════
 
 
+_PH_FEED = """<?xml version="1.0" encoding="UTF-8"?>
+<feed xml:lang="en-US" xmlns="http://www.w3.org/2005/Atom">
+  <id>tag:www.producthunt.com,2005:/feed</id>
+  <entry>
+    <id>tag:www.producthunt.com,2005:Post/1</id>
+    <published>2026-10-19T14:29:47-07:00</published>
+    <link rel="alternate" type="text/html" href="https://www.producthunt.com/products/cool-app"/>
+    <title>Cool App</title>
+    <content type="html">&lt;p&gt;
+            Do things &amp;amp; more
+          &lt;/p&gt;
+          &lt;p&gt;&lt;a href="https://www.producthunt.com/products/cool-app"&gt;Discussion&lt;/a&gt;&lt;/p&gt;</content>
+    <author><name>Maker One</name></author>
+  </entry>
+  <entry>
+    <link rel="alternate" type="text/html" href="https://www.producthunt.com/products/search-result"/>
+    <title>Search Result</title>
+    <content type="html">&lt;p&gt;Found it&lt;/p&gt;</content>
+  </entry>
+</feed>"""
+
+
 class TestProductHuntSource:
-    def test_parse_html(self):
+    def test_parse_feed(self):
         from trend_pulse.sources.producthunt import ProductHuntSource
-        html = '''{"__typename":"Post","someField":"x","name":"Cool App","tagline":"Do things","slug":"cool-app","votesCount":500}'''
-        items = ProductHuntSource()._parse_html(html)
+        items = ProductHuntSource()._parse_feed(_PH_FEED)
+        assert [it.keyword for it in items] == ["Cool App", "Search Result"]
+        assert items[0].score == 100  # Rank-based: the feed has no vote counts
+        assert items[0].url == "https://www.producthunt.com/products/cool-app"
+        assert items[0].metadata["tagline"] == "Do things & more"
+        assert items[0].metadata["slug"] == "cool-app"
+        assert items[0].metadata["author"] == "Maker One"
+
+    def test_fetch_trending_uses_official_feed(self):
+        from trend_pulse.sources.producthunt import ProductHuntSource
+        client = _mock_client([_text_resp(_PH_FEED)])
+        with patch("httpx.AsyncClient", return_value=client):
+            items = _run(ProductHuntSource().fetch_trending(count=1))
         assert len(items) == 1
-        assert items[0].keyword == "Cool App"
-        assert items[0].score == 50.0  # 500/10
-        assert items[0].metadata["tagline"] == "Do things"
+        assert client.get.call_args[0][0] == "https://www.producthunt.com/feed"
 
     def test_search(self):
         from trend_pulse.sources.producthunt import ProductHuntSource
-        html = '''{"__typename":"Post","x":"y","name":"Search Result","tagline":"Found it","slug":"search-result","votesCount":200}'''
-        resp = _text_resp(html)
-        client = _mock_client([resp])
+        client = _mock_client([_text_resp(_PH_FEED)])
         with patch("httpx.AsyncClient", return_value=client):
-            items = _run(ProductHuntSource().search("search"))
+            items = _run(ProductHuntSource().search("found"))
         assert len(items) == 1
         assert items[0].keyword == "Search Result"
 

@@ -25,7 +25,7 @@ class StackOverflowSource(TrendSource):
             view_count = item.get("view_count", 0)
             items.append(TrendItem(
                 keyword=html.unescape(item.get("title", "")),
-                score=min(score_val / 5, 100),  # 500 votes = 100
+                score=max(min(score_val / 5, 100), 0),  # 500 votes = 100; downvoted = 0
                 source=self.name,
                 url=item.get("link", ""),
                 traffic=f"{view_count} views",

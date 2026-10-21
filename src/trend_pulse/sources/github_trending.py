@@ -121,8 +121,12 @@ class GitHubTrendingSource(TrendSource):
         )
 
         for article in articles[:count]:
-            # Repo name: /user/repo (must be a simple path, not login/sponsors)
-            name_match = re.search(r'href="(/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)"', article)
+            # Repo name: the <h2> title link /user/repo. The Sponsor button
+            # (/sponsors/<user>) comes first in the article, so never take the
+            # first simple href blindly.
+            name_match = re.search(
+                r'<h2[^>]*>\s*<a[^>]*href="(/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)"', article, re.DOTALL
+            ) or re.search(r'href="(/(?!sponsors/|login)[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)"', article)
             repo_path = name_match.group(1).strip() if name_match else ""
             repo_name = repo_path.lstrip("/")
             if not repo_name or "/" not in repo_name:

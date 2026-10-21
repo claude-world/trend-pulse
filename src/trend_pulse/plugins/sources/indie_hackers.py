@@ -1,15 +1,18 @@
 """Indie Hackers trending posts (free, no auth).
 
 Indie Hackers is a community for bootstrapped founders and indie makers.
-Uses their public RSS feed for trending discussions.
+IH has no public RSS feed or API, so this parses the ranked post feed on the
+server-rendered homepage.
 """
 
 from __future__ import annotations
 
+import html as html_lib
 import re
 
 import httpx
 
+from ... import __version__
 from ...plugins.base import PluginSource
 from ...sources.base import TrendItem
 
@@ -18,94 +21,70 @@ class IndieHackersSource(PluginSource):
     name = "indie_hackers"
     description = "Indie Hackers - trending posts from the indie maker/founder community"
     requires_auth = False
-    rate_limit = "unlimited (RSS)"
+    rate_limit = "moderate (scraping)"
     category = "dev"
     frequency = "daily"
 
-    # IH removed public RSS; use their internal API
-    API_URL = "https://www.indiehackers.com/api/stories"
-    POSTS_URL = "https://www.indiehackers.com/posts"
+    HOME_URL = "https://www.indiehackers.com/"
     HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/html, */*",
-        "Referer": "https://www.indiehackers.com/",
+        "User-Agent": f"trend-pulse/{__version__} (github.com/claude-world/trend-pulse)",
+        "Accept": "text/html",
     }
 
+    _STORY_RE = re.compile(r'<div class="story homepage-post\b')
+    _LINK_RE = re.compile(r'class="story__text-link[^"]*" href="(/post/[^"]+)"')
+    _TITLE_RE = re.compile(r'<h3 class="story__title">(.*?)</h3>', re.DOTALL)
+    _COUNT_RE = re.compile(
+        r'story__count--(likes|comments)".*?<span class="story__count-number">([\d,]+)</span>',
+        re.DOTALL,
+    )
+
     async def fetch_trending(self, geo: str = "", count: int = 20) -> list[TrendItem]:
-        # Try JSON API first
         try:
-            return await self._fetch_api(count)
+            async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+                resp = await client.get(self.HOME_URL, headers=self.HEADERS)
+                resp.raise_for_status()
         except Exception:
-            pass
+            return []
+        return self._parse_home(resp.text, count)
 
-        # Fallback: scrape posts page
-        return await self._fetch_scrape(count)
-
-    async def _fetch_api(self, count: int) -> list[TrendItem]:
-        params = {"orderBy": "hot", "limit": count}
-        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
-            resp = await client.get(self.API_URL, params=params, headers=self.HEADERS)
-            resp.raise_for_status()
-            data = resp.json()
-
-        items: list[TrendItem] = []
-        rank = 1
-
-        stories = data if isinstance(data, list) else data.get("stories", data.get("data", []))
-        for story in stories[:count]:
-            if not isinstance(story, dict):
-                continue
-            title = story.get("title", "").strip()
-            url = story.get("url", "") or f"https://www.indiehackers.com/post/{story.get('id', '')}"
-            votes = story.get("votes", 0) or story.get("upvoteCount", 0) or 0
-
-            if not title:
-                continue
-
-            items.append(TrendItem(
-                keyword=title,
-                score=min(votes / 50, 100) if votes else max(0, 100 - rank),
-                source=self.name,
-                url=url,
-                traffic=f"{votes} votes" if votes else f"rank #{rank}",
-                category="startup",
-                metadata={"votes": votes, "rank": rank},
-            ))
-            rank += 1
-
-        return items
-
-    async def _fetch_scrape(self, count: int) -> list[TrendItem]:
-        """Scrape posts page as fallback."""
-        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
-            resp = await client.get(self.POSTS_URL, headers=self.HEADERS)
-            resp.raise_for_status()
-            html = resp.text
+    def _parse_home(self, html: str, count: int) -> list[TrendItem]:
+        """Parse the homepage's ranked "organic" feed (skips featured, newest, and ads)."""
+        start = html.find('<div class="organic"')
+        if start == -1:
+            return []
+        end = html.find('<div class="featured"', start)
+        section = html[start:end if end != -1 else len(html)]
 
         items: list[TrendItem] = []
-        rank = 1
         seen: set[str] = set()
-
-        # Extract post links from IH
-        matches = re.findall(
-            r'<a[^>]+href="(/post/[^"]+)"[^>]*>([^<]{10,100})</a>',
-            html,
-        )
-        for path, title in matches[:count]:
-            title = title.strip()
-            if not title or title in seen:
+        blocks = self._STORY_RE.split(section)[1:]
+        for block in blocks:
+            link = self._LINK_RE.search(block)
+            title_match = self._TITLE_RE.search(block)
+            if not link or not title_match:
                 continue
-            seen.add(title)
+            path = link.group(1)
+            title = html_lib.unescape(re.sub(r"<[^>]+>", "", title_match.group(1))).strip()
+            if not title or path in seen:
+                continue
+            seen.add(path)
+
+            counts = {kind: int(num.replace(",", "")) for kind, num in self._COUNT_RE.findall(block)}
+            votes = counts.get("likes", 0)
+            comments = counts.get("comments", 0)
+            rank = len(items) + 1
             items.append(TrendItem(
                 keyword=title,
-                score=max(0, 100 - rank),
+                score=min(votes / 2, 100),  # 200 upvotes = 100
                 source=self.name,
                 url=f"https://www.indiehackers.com{path}",
-                traffic=f"rank #{rank}",
+                traffic=f"{votes} upvotes, {comments} comments",
                 category="startup",
-                metadata={"rank": rank},
+                metadata={"votes": votes, "comments": comments, "rank": rank},
             ))
-            rank += 1
+            if len(items) >= count:
+                break
 
         return items
 

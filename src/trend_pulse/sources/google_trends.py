@@ -16,7 +16,8 @@ class GoogleTrendsSource(TrendSource):
     rate_limit = "unlimited (RSS)"
 
     RSS_URL = "https://trends.google.com/trending/rss"
-    NS = {"ht": "https://trends.google.com/trending/trendsapi/ht"}
+    # The "ht:" elements are matched by local name ({*}): Google has changed
+    # the namespace URI before (trendsapi/ht -> trending/rss).
 
     async def fetch_trending(self, geo: str = "US", count: int = 20) -> list[TrendItem]:
         params = {"geo": geo} if geo else {}
@@ -32,16 +33,16 @@ class GoogleTrendsSource(TrendSource):
                 break
 
             title = item.findtext("title", "")
-            traffic = item.findtext("ht:approx_traffic", "", self.NS)
+            traffic = item.findtext("{*}approx_traffic", "")
             pub_date = item.findtext("pubDate", "")
 
             # Parse news articles
             news = []
-            for ns_item in item.findall("ht:news_item", self.NS):
+            for ns_item in item.findall("{*}news_item"):
                 news.append({
-                    "title": ns_item.findtext("ht:news_item_title", "", self.NS),
-                    "url": ns_item.findtext("ht:news_item_url", "", self.NS),
-                    "source": ns_item.findtext("ht:news_item_source", "", self.NS),
+                    "title": ns_item.findtext("{*}news_item_title", ""),
+                    "url": ns_item.findtext("{*}news_item_url", ""),
+                    "source": ns_item.findtext("{*}news_item_source", ""),
                 })
 
             # Normalize score: parse traffic like "200K+", "50K+", "500+"

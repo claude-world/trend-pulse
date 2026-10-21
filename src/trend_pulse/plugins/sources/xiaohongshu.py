@@ -132,10 +132,11 @@ class XiaohongshuSource(PluginSource):
         return items
 
     def _parse_html(self, html: str, count: int) -> list[TrendItem]:
-        """Extract note data from HTML bundle."""
-        items: list[TrendItem] = []
-        rank = 1
+        """Extract note data from HTML bundle.
 
+        Only embedded note data counts: a login, block, or error page yields
+        nothing rather than its <title> posing as a trend.
+        """
         # Look for initial data in script tags
         json_matches = re.findall(r'window\.__INITIAL_STATE__\s*=\s*(\{.*?\})\s*(?:;|\n)', html, re.DOTALL)
         for json_str in json_matches[:2]:
@@ -147,23 +148,7 @@ class XiaohongshuSource(PluginSource):
             except (json.JSONDecodeError, ValueError):
                 continue
 
-        # Fallback: extract titles from meta tags
-        titles = re.findall(r'<title[^>]*>([^<]+)</title>', html)
-        for title in titles[:count]:
-            title = title.strip()
-            if title and len(title) > 5 and "小紅書" not in title:
-                items.append(TrendItem(
-                    keyword=title[:100],
-                    score=max(0, 100 - rank),
-                    source=self.name,
-                    url="https://www.xiaohongshu.com/explore",
-                    traffic=f"rank #{rank}",
-                    category="lifestyle",
-                    metadata={"rank": rank},
-                ))
-                rank += 1
-
-        return items
+        return []
 
 
 def register() -> XiaohongshuSource:
