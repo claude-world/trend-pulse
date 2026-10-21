@@ -27,16 +27,23 @@ class DockerHubSource(TrendSource):
     URL = "https://hub.docker.com/v2/repositories/library/"
 
     async def fetch_trending(self, geo: str = "", count: int = 20) -> list[TrendItem]:
+        # Docker Hub flipped the meaning of "ordering" in 2026: "pull_count" now
+        # sorts most-pulled first. Detect the direction on a page of at least 10
+        # and retry the other way if it came back ascending.
+        page_size = min(max(count, 10), 100)
         async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.get(
-                self.URL,
-                params={"page_size": count, "ordering": "-pull_count"},
-            )
-            resp.raise_for_status()
-            data = resp.json()
+            for ordering in ("pull_count", "-pull_count"):
+                resp = await client.get(
+                    self.URL,
+                    params={"page_size": page_size, "ordering": ordering},
+                )
+                resp.raise_for_status()
+                results = resp.json().get("results", [])
+                if len(results) < 2 or results[0].get("pull_count", 0) >= results[-1].get("pull_count", 0):
+                    break
 
         items: list[TrendItem] = []
-        for repo in data.get("results", []):
+        for repo in results[:count]:
             pull_count = repo.get("pull_count", 0)
             items.append(TrendItem(
                 keyword=repo.get("name", ""),

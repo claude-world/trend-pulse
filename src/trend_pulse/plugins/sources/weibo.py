@@ -1,17 +1,22 @@
 """Weibo (微博) real-time hot search list (free, no auth).
 
 Scrapes the public hot search page: https://s.weibo.com/top/summary
+Weibo now routes anonymous clients through its "Sina Visitor System" bot check
+(passport.weibo.com); when that gate is served, this source returns no items.
 """
 
 from __future__ import annotations
 
 import html
+import logging
 import re
 
 import httpx
 
 from ...plugins.base import PluginSource
 from ...sources.base import TrendItem
+
+logger = logging.getLogger(__name__)
 
 
 class WeiboTrendingSource(PluginSource):
@@ -23,7 +28,6 @@ class WeiboTrendingSource(PluginSource):
     frequency = "realtime"
 
     URL = "https://s.weibo.com/top/summary?cate=realtimehot"
-    VISITOR_URL = "https://passport.weibo.com/visitor/genvisitor"
     HEADERS = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -31,32 +35,14 @@ class WeiboTrendingSource(PluginSource):
         "Referer": "https://weibo.com/",
     }
 
-    async def _get_visitor_cookies(self, client: httpx.AsyncClient) -> dict[str, str]:
-        """Obtain Weibo visitor token to bypass bot protection."""
-        r = await client.post(
-            self.VISITOR_URL,
-            data={"cb": "gen_callback", "from": ""},
-            headers={**self.HEADERS, "Content-Type": "application/x-www-form-urlencoded"},
-        )
-        # Response: window.gen_callback && gen_callback({"retcode":20000000,"data":{"tid":"..."}})
-        m = re.search(r'"tid"\s*:\s*"([^"]+)"', r.text)
-        if m:
-            return {"tid": m.group(1)}
-        return {}
-
     async def fetch_trending(self, geo: str = "", count: int = 20) -> list[TrendItem]:
         async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
-            # Get visitor token first
-            try:
-                visitor = await self._get_visitor_cookies(client)
-                if visitor.get("tid"):
-                    # Set visitor cookie
-                    client.cookies.set("tid", visitor["tid"], domain=".weibo.com")
-            except Exception:
-                pass  # Continue without visitor token
-
             resp = await client.get(self.URL, headers=self.HEADERS)
             resp.raise_for_status()
+
+        if "passport.weibo" in resp.url.host or "Sina Visitor System" in resp.text[:2000]:
+            logger.debug("weibo: hot search is behind the Sina Visitor System check; skipping")
+            return []
 
         page = resp.text
         items: list[TrendItem] = []

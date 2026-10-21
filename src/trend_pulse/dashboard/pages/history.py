@@ -47,7 +47,7 @@ def render(agg, run_fn):
                 fig = px.line(x=ts, y=scores,
                               labels={"x": "Record #", "y": "Score"},
                               title=f"'{keyword}' — Score Trajectory")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
                 with st.expander("Raw records"):
                     st.json(records[-10:])

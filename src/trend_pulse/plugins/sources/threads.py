@@ -1,8 +1,9 @@
 """Threads popular hashtags and content (free, limited without login).
 
-Threads (by Meta) uses GraphQL internally. This implementation scrapes
-the public explore/trending page. For full access, unofficial APIs may
-be needed (see threads-api Python library).
+Threads (by Meta) uses GraphQL internally. This implementation reads the
+explore page when it is served publicly. Anonymous visitors are currently
+redirected to the login page (and the official Threads API needs an OAuth
+token), so this source returns no items until that changes.
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ class ThreadsSource(PluginSource):
     category = "social"
     frequency = "realtime"
 
-    EXPLORE_URL = "https://www.threads.net/explore"
+    EXPLORE_URL = "https://www.threads.com/explore"  # threads.net redirects here
     HEADERS = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -47,11 +48,14 @@ class ThreadsSource(PluginSource):
             resp = await client.get(self.EXPLORE_URL, headers=self.HEADERS)
             resp.raise_for_status()
 
-        html = resp.text
-        items: list[TrendItem] = []
-        rank = 1
+        # Explore is login-walled for anonymous visitors: nothing public to read
+        if resp.url.path.startswith("/login"):
+            return []
 
-        # Try to extract __SSR_DATA__ or JSON embedded in script tags
+        html = resp.text
+
+        # Try to extract __SSR_DATA__ or JSON embedded in script tags. A regex over
+        # raw HTML would pick up page chrome and HTML entities (e.g. "&#x2022;"), not trends.
         json_matches = re.findall(r'__SSR_DATA__\s*=\s*(\{.*?\});', html, re.DOTALL)
         for json_str in json_matches[:3]:
             try:
@@ -62,31 +66,7 @@ class ThreadsSource(PluginSource):
             except (json.JSONDecodeError, ValueError):
                 continue
 
-        # Fallback: extract visible text content mentions
-        # Look for post-like structures with engagement signals
-        hashtag_pattern = re.findall(r'#(\w+)', html)
-        seen: set[str] = set()
-        for tag in hashtag_pattern:
-            if len(tag) < 2 or tag in seen:
-                continue
-            seen.add(tag)
-            items.append(TrendItem(
-                keyword=f"#{tag}",
-                score=max(0, 100 - rank),
-                source=self.name,
-                url=f"https://www.threads.net/explore?q={tag}",
-                traffic=f"rank #{rank}",
-                category="social",
-                metadata={"type": "hashtag", "rank": rank},
-            ))
-            rank += 1
-            if rank > count:
-                break
-
-        if not items:
-            raise ValueError("Could not extract content from Threads explore page")
-
-        return items
+        raise ValueError("Could not extract content from Threads explore page")
 
     async def _fetch_popular_hashtags(self, count: int) -> list[TrendItem]:
         """Alternative: use known popular Threads topics as fallback."""
@@ -113,7 +93,7 @@ class ThreadsSource(PluginSource):
                             keyword=str(text)[:100],
                             score=max(0, 100 - rank),
                             source=self.name,
-                            url="https://www.threads.net/explore",
+                            url=self.EXPLORE_URL,
                             traffic=f"rank #{rank}",
                             category="social",
                             metadata={"rank": rank},

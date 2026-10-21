@@ -1,105 +1,100 @@
-"""Pinterest trending topics (public search API, no auth).
+"""Pinterest trending search keywords (Pinterest Trends, no auth).
 
-Scrapes Pinterest's trending search terms from their open search API.
+Uses the JSON endpoint behind the public "Search trends" table on
+https://trends.pinterest.com, which serves anonymous visitors.
 """
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import httpx
 
+from ... import __version__
 from ...plugins.base import PluginSource
 from ...sources.base import TrendItem
 
 
 class PinterestSource(PluginSource):
     name = "pinterest"
-    description = "Pinterest - trending search keywords and visual topics"
+    description = "Pinterest - trending search keywords from Pinterest Trends"
     requires_auth = False
     rate_limit = "moderate"
     category = "social"
     frequency = "daily"
     difficulty = "low"
 
-    TRENDING_URL = "https://www.pinterest.com/resource/TrendingSearchesResource/get/"
+    TRENDS_URL = "https://trends.pinterest.com/top_trends_filtered/"
     HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/javascript, */*; q=0.01",
-        "Referer": "https://www.pinterest.com/",
-        "X-Requested-With": "XMLHttpRequest",
+        "User-Agent": f"trend-pulse/{__version__} (github.com/claude-world/trend-pulse)",
+        "Accept": "application/json",
     }
 
     async def fetch_trending(self, geo: str = "", count: int = 20) -> list[TrendItem]:
+        country = geo.upper() or "US"
         try:
-            return await self._fetch_trending_api(count)
-        except Exception:
-            pass
-        try:
-            return await self._fetch_explore(count)
+            return await self._fetch_top_trends(country, count)
+        except httpx.HTTPStatusError as exc:
+            # Pinterest Trends covers a subset of countries (no JP/TW/AU); 400 = unsupported
+            if exc.response.status_code == 400 and country != "US":
+                try:
+                    return await self._fetch_top_trends("US", count)
+                except Exception:
+                    return []
+            return []
         except Exception:
             return []
 
-    async def _fetch_trending_api(self, count: int) -> list[TrendItem]:
+    async def _fetch_top_trends(self, country: str, count: int) -> list[TrendItem]:
+        # Same defaults as the trends.pinterest.com "Search trends" table; endDate is
+        # clamped server-side to the latest week with data
         params = {
-            "source_url": "/",
-            "data": '{"options":{"country":"US"},"context":{}}',
+            "lookbackWindow": 2,
+            "endDate": datetime.now(timezone.utc).date().isoformat(),
+            "rankingMethod": 3,
+            "country": country,
+            "trendsPreset": 3,
+            "numTermsToReturn": max(1, min(count, 50)),
         }
         async with httpx.AsyncClient(timeout=15, headers=self.HEADERS, follow_redirects=True) as client:
-            resp = await client.get(self.TRENDING_URL, params=params)
+            resp = await client.get(self.TRENDS_URL, params=params)
             resp.raise_for_status()
             data = resp.json()
 
+        values = [v for v in data.get("values", []) if isinstance(v, dict) and v.get("term")]
+        # reverseRank: higher = better rank
+        values.sort(key=lambda v: v.get("reverseRank", 0), reverse=True)
+
         items: list[TrendItem] = []
-        trends = (
-            data.get("resource_response", {}).get("data", {}).get("trending_searches", [])
-            or data.get("resource_response", {}).get("data", [])
-        )
-        for i, entry in enumerate(trends[:count]):
-            if isinstance(entry, dict):
-                kw = entry.get("display_term", entry.get("term", ""))
-            elif isinstance(entry, str):
-                kw = entry
-            else:
-                continue
-            if not kw:
-                continue
-            score = max(10.0, 100.0 - i * 4)
+        for i, entry in enumerate(values[:count]):
+            kw = entry["term"]
+            mom = (entry.get("mom_change") or {}).get("value")
             items.append(TrendItem(
                 keyword=kw,
-                score=score,
+                score=max(10.0, 100.0 - i * 4),
                 source=self.name,
                 url=f"https://www.pinterest.com/search/pins/?q={kw.replace(' ', '+')}",
+                traffic=self._format_change(mom, "MoM"),
                 category="visual",
+                metadata={
+                    "country": country,
+                    "rank": i + 1,
+                    "search_count": entry.get("searchCount"),
+                    "wow_change": (entry.get("wow_change") or {}).get("value"),
+                    "mom_change": mom,
+                    "yoy_change": (entry.get("yoy_change") or {}).get("value"),
+                },
             ))
         return items
 
-    async def _fetch_explore(self, count: int) -> list[TrendItem]:
-        """Fallback: scrape explore page for trending keywords."""
-        import re
-        async with httpx.AsyncClient(timeout=15, headers=self.HEADERS, follow_redirects=True) as client:
-            resp = await client.get("https://www.pinterest.com/ideas/")
-            resp.raise_for_status()
-            text = resp.text
-
-        # Extract topic headings from the page
-        matches = re.findall(r'"displayName"\s*:\s*"([^"]{3,50})"', text)
-        seen: set[str] = set()
-        items: list[TrendItem] = []
-        for i, kw in enumerate(matches):
-            if kw in seen or len(kw) < 3:
-                continue
-            seen.add(kw)
-            score = max(10.0, 90.0 - i * 3)
-            items.append(TrendItem(
-                keyword=kw,
-                score=score,
-                source=self.name,
-                url=f"https://www.pinterest.com/search/pins/?q={kw.replace(' ', '+')}",
-                category="visual",
-            ))
-            if len(items) >= count:
-                break
-        return items
+    @staticmethod
+    def _format_change(value: float | None, period: str) -> str:
+        """Format a growth ratio the way Pinterest Trends shows it (1.5 -> '+150% MoM')."""
+        if value is None:
+            return ""
+        if value >= 100:  # Pinterest caps the ratio at 100.01, shown as "10,000%+"
+            return f"10,000%+ {period}"
+        return f"{value * 100:+,.0f}% {period}"
 
     async def search(self, query: str, geo: str = "") -> list[TrendItem]:
         return []

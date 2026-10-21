@@ -1,0 +1,14 @@
+.git
+.github
+.devcontainer
+.venv
+.env
+.pymon
+.pytest_cache
+.ruff_cache
+**/__pycache__
+*.egg-info
+build
+dist
+data
+tests

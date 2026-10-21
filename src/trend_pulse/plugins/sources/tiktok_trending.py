@@ -3,8 +3,9 @@
 TikTok's Creative Center has a public trending hashtags page:
 https://ads.tiktok.com/business/creativecenter/inspiration/popular/hashtag/pc/en
 
-This source scrapes the public page. For more data, install playwright:
-pip install 'trend-pulse[browser]' or pip install playwright && playwright install chromium
+The page now redirects to the TikTok One app, and the hashtag API answers
+anonymous requests with code 40101 ("no permission"), so this source currently
+returns no items. It keeps trying the API and the static page in case access returns.
 """
 
 from __future__ import annotations
@@ -16,16 +17,10 @@ import httpx
 from ...plugins.base import PluginSource
 from ...sources.base import TrendItem
 
-try:
-    from playwright.async_api import async_playwright  # type: ignore[import]
-    _PLAYWRIGHT_AVAILABLE = True
-except ImportError:
-    _PLAYWRIGHT_AVAILABLE = False
-
 
 class TikTokTrendingSource(PluginSource):
     name = "tiktok_trending"
-    description = "TikTok Trending - trending hashtags from TikTok Creative Center (playwright optional)"
+    description = "TikTok Trending - trending hashtags from TikTok Creative Center"
     requires_auth = False
     rate_limit = "moderate"
     category = "social"
@@ -58,15 +53,11 @@ class TikTokTrendingSource(PluginSource):
         except Exception:
             pass
 
-        # Try playwright if available (more reliable)
-        if _PLAYWRIGHT_AVAILABLE:
-            try:
-                return await self._fetch_playwright(region, count)
-            except Exception:
-                pass
-
         # Last resort: scrape static HTML
-        return await self._fetch_html(region, count)
+        try:
+            return await self._fetch_html(region, count)
+        except Exception:
+            return []
 
     async def _fetch_api(self, region: str, count: int) -> list[TrendItem]:
         """Try the Creative Center internal API."""
@@ -83,19 +74,11 @@ class TikTokTrendingSource(PluginSource):
             resp.raise_for_status()
             data = resp.json()
 
+        # Errors come back as HTTP 200 with a non-zero code, e.g. 40101 "no permission"
+        if data.get("code", 0) != 0:
+            raise ValueError(f"Creative Center API error {data.get('code')}: {data.get('msg', '')}")
+
         return self._parse_api(data, count)
-
-    async def _fetch_playwright(self, region: str, count: int) -> list[TrendItem]:
-        """Use playwright for JS-rendered content."""
-        url = f"{self.CC_URL}?region={region}"
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
-            await page.goto(url, wait_until="networkidle", timeout=30_000)
-            content = await page.content()
-            await browser.close()
-
-        return self._parse_html(content, count)
 
     async def _fetch_html(self, region: str, count: int) -> list[TrendItem]:
         """Fallback: static HTTP request (may not work for JS-rendered content)."""

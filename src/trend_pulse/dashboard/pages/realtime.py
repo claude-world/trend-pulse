@@ -34,7 +34,7 @@ def render(agg, run_fn):
                         marker=dict(color=scores[::-1], colorscale="Viridis"),
                     ))
                     fig.update_layout(height=max(400, len(merged) * 20), margin=dict(l=200))
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
                 else:
                     st.info("No data returned.")
             except Exception as e:

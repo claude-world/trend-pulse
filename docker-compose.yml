@@ -1,10 +1,11 @@
-version: "3.9"
-
 # TrendPulse AI — Docker Compose deployment
 #
 # Quick start:
 #   docker compose up           # SQLite mode (default, zero-config)
 #   docker compose up dashboard # Dashboard only
+#
+# MCP endpoint: http://localhost:8080/mcp (streamable HTTP). It has no
+# authentication, so the port is published on 127.0.0.1 only.
 #
 # Environment:
 #   Copy .env.example to .env and fill in optional credentials.
@@ -18,11 +19,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: trend-pulse-server
+    command: trend-pulse-server --transport streamable-http --host 0.0.0.0 --port 8080
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY:-}
+      - X_BEARER_TOKEN=${X_BEARER_TOKEN:-}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
@@ -32,7 +35,7 @@ services:
       - trend_data:/app/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python3", "-c", "import trend_pulse"]
+      test: ["CMD", "python3", "-c", "import socket; socket.create_connection(('127.0.0.1', 8080), 2)"]
       interval: 30s
       timeout: 10s
       retries: 3

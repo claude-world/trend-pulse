@@ -37,7 +37,8 @@ def render(agg, run_fn):
                     ))
                     for plat, content in state.get("final_content", {}).items():
                         st.subheader(plat.capitalize())
-                        st.text_area("", content, height=120, key=f"cp_out_{plat}")
+                        st.text_area(f"{plat} content", content, height=120, key=f"cp_out_{plat}",
+                                     label_visibility="collapsed")
                 except Exception as e:
                     st.error(f"Error: {e}")
 
@@ -66,7 +67,7 @@ def render(agg, run_fn):
 
             try:
                 import pandas as pd
-                st.dataframe(pd.DataFrame(calendar), use_container_width=True)
+                st.dataframe(pd.DataFrame(calendar), width="stretch")
             except ImportError:
                 # pandas not installed — fall back to plain table
                 st.table(calendar)

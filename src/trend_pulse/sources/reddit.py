@@ -1,45 +1,60 @@
-"""Reddit popular posts via public JSON API (free, no auth)."""
+"""Reddit popular posts via official RSS/Atom feeds (free, no auth).
+
+Reddit's JSON endpoints (/r/popular.json, /search.json) return 403 to
+unauthenticated clients, so this source reads the public Atom feeds instead.
+The feeds carry no vote counts, so scores are rank-based.
+"""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import xml.etree.ElementTree as ET
 
 import httpx
 
 from .base import TrendSource, TrendItem
 from .. import __version__
 
+# Atom namespace
+_NS = {"atom": "http://www.w3.org/2005/Atom"}
+
 
 class RedditSource(TrendSource):
     name = "reddit"
     description = "Reddit - popular posts across all subreddits"
     requires_auth = False
-    rate_limit = "60 req/min (with User-Agent)"
+    rate_limit = "strict (anonymous RSS, about 1 req/min)"
 
-    URL = "https://www.reddit.com/r/popular.json"
+    URL = "https://www.reddit.com/r/popular/.rss"
+    SEARCH_URL = "https://www.reddit.com/search.rss"
     USER_AGENT = f"trend-pulse/{__version__} (github.com/claude-world/trend-pulse)"
 
-    def _parse_posts(self, children: list) -> list[TrendItem]:
+    def _parse_feed(self, xml_text: str) -> list[TrendItem]:
+        root = ET.fromstring(xml_text)
         items: list[TrendItem] = []
-        for child in children:
-            post = child.get("data", {})
-            if not post:
+        for entry in root.findall("atom:entry", _NS):
+            title = (entry.findtext("atom:title", "", _NS) or "").strip()
+            if not title:
                 continue
 
-            upvotes = post.get("score", 0)
+            link_el = entry.find("atom:link", _NS)
+            url = link_el.get("href", "") if link_el is not None else ""
+            category_el = entry.find("atom:category", _NS)
+            subreddit = category_el.get("term", "") if category_el is not None else ""
+            author = entry.findtext("atom:author/atom:name", "", _NS) or ""
+
+            rank = len(items) + 1
             items.append(TrendItem(
-                keyword=post.get("title", ""),
-                score=min(upvotes / 500, 100),  # 50K upvotes = 100
+                keyword=title,
+                score=max(100 - (rank - 1) * 5, 10),  # Rank-based score
                 source=self.name,
-                url=f'https://reddit.com{post.get("permalink", "")}',
-                traffic=f"{upvotes} upvotes",
+                url=url,
+                traffic=f"rank #{rank}",
                 category="general",
-                published=datetime.fromtimestamp(post.get("created_utc", 0), tz=timezone.utc).isoformat(),
+                published=entry.findtext("atom:published", "", _NS) or "",
                 metadata={
-                    "subreddit": post.get("subreddit", ""),
-                    "author": post.get("author", ""),
-                    "comments": post.get("num_comments", 0),
-                    "upvote_ratio": post.get("upvote_ratio", 0),
+                    "subreddit": subreddit,
+                    "author": author.removeprefix("/u/"),
+                    "rank": rank,
                 },
             ))
         return items
@@ -48,22 +63,22 @@ class RedditSource(TrendSource):
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.get(
                 self.URL,
-                params={"limit": count},
+                params={"limit": min(count, 100)},
                 headers={"User-Agent": self.USER_AGENT},
             )
             resp.raise_for_status()
-            data = resp.json()
+            text = resp.text
 
-        return self._parse_posts(data.get("data", {}).get("children", []))
+        return self._parse_feed(text)[:count]
 
     async def search(self, query: str, geo: str = "") -> list[TrendItem]:
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.get(
-                "https://www.reddit.com/search.json",
+                self.SEARCH_URL,
                 params={"q": query, "sort": "relevance", "limit": 20},
                 headers={"User-Agent": self.USER_AGENT},
             )
             resp.raise_for_status()
-            data = resp.json()
+            text = resp.text
 
-        return self._parse_posts(data.get("data", {}).get("children", []))
+        return self._parse_feed(text)

@@ -94,12 +94,12 @@ class TestNewNotificationChannels:
 class TestNewMCPTools29:
     def test_29_tools_registered(self):
         from trend_pulse.server import mcp
-        tools = mcp._tool_manager._tools
+        tools = {tool.name for tool in _run(mcp.list_tools())}
         assert len(tools) >= 29
 
     def test_new_tools_present(self):
         from trend_pulse.server import mcp
-        tools = mcp._tool_manager._tools
+        tools = {tool.name for tool in _run(mcp.list_tools())}
         new_tools = {
             "adapt_content", "analyze_viral_factors", "generate_hashtags",
             "get_source_status", "get_trend_velocity", "batch_score_content",

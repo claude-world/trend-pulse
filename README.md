@@ -21,7 +21,7 @@ Use as a **Python library**, **CLI tool**, **MCP server** for Claude Code / AI a
 
 ### Built-in Sources (20)
 
-All built-in sources are free and require **zero authentication**:
+All built-in sources are free and require **zero authentication**. Run `trend-pulse sources` to list them, or the `get_source_status` MCP tool to see which ones are reachable from your network:
 
 | Source | Data | Freshness | What you get |
 |--------|------|-----------|-------------|
@@ -36,14 +36,14 @@ All built-in sources are free and require **zero authentication**:
 | **Lobste.rs** | JSON API | Real-time | Community-driven tech news |
 | **dev.to** | Public API | Daily | Developer community articles |
 | **npm** | Downloads API | Daily | JavaScript package download trends |
-| **Reddit** | Public JSON | Real-time | Popular posts across all subreddits |
+| **Reddit** | Official RSS feed | Real-time | Popular posts across all subreddits (rank-based scores) |
 | **CoinGecko** | Public API | Real-time | Trending cryptocurrencies |
 | **Docker Hub** | Public API | Daily | Popular container images |
 | **Stack Overflow** | Public API | Real-time | Hot questions |
-| **ArXiv** | RSS/API | Daily | Trending research papers |
-| **Product Hunt** | Public API | Daily | Product launches and upvotes |
+| **ArXiv** | Export API + RSS listing | Daily | Latest AI/CL/ML research papers |
+| **Product Hunt** | Official Atom feed | Daily | Latest featured launches (rank-based scores) |
 | **Lemmy** | Public API | Real-time | Federated community posts (lemmy.world) |
-| **Dcard** | Public API | Real-time | Taiwan social platform trending posts |
+| **Dcard** | Public API | Real-time | Taiwan social platform trending posts (currently blocked: Cloudflare answers 403) |
 | **PTT** | Web scrape | Real-time | Taiwan BBS hot articles (Gossiping, Tech_Job, etc.) |
 
 ### Plugin Sources (17)
@@ -52,23 +52,25 @@ Plugin sources live in `src/trend_pulse/plugins/sources/` and are auto-discovere
 
 | Source | ID | Category | What you get |
 |--------|----|----------|-------------|
-| **Weibo** | `weibo` | tw | China hot search list |
-| **YouTube Trending** | `youtube_trending` | global | Trending videos with view counts |
-| **Threads** | `threads` | social | Trending Threads posts |
-| **X/Twitter** | `x_trending` | social | Trending topics (optional bearer token) |
-| **TikTok Trending** | `tiktok_trending` | social | TikTok trending videos |
-| **LINE Today TW** | `line_today` | tw | Taiwan LINE Today news |
-| **Mobile01** | `mobile01` | tw | Taiwan tech community |
-| **Bahamut** | `bahamut` | tw | Taiwan gaming community |
+| **Weibo** | `weibo` | tw | China hot search list (currently behind Weibo's visitor check: returns nothing) |
+| **YouTube Trending** | `youtube_trending` | global | Most popular videos via the YouTube Data API (needs a free `YOUTUBE_API_KEY`) |
+| **Threads** | `threads` | social | Trending Threads posts (login-walled for anonymous visitors: returns nothing) |
+| **X/Twitter** | `x_trending` | social | Trending topics via twikit (`[social]` extra); guest-API fallback needs `X_BEARER_TOKEN` |
+| **TikTok Trending** | `tiktok_trending` | social | Creative Center hashtags (now requires login: returns nothing) |
+| **LINE Today TW** | `line_today` | tw | Realtime most-viewed LINE Today articles |
+| **Mobile01** | `mobile01` | tw | Taiwan tech community (blocked for non-browser clients: returns nothing) |
+| **Bahamut** | `bahamut` | tw | Hottest forum boards (哈啦區), GNN news as fallback |
 | **ETtoday** | `ettoday` | tw | Taiwan news |
 | **Yahoo TW** | `yahoo_tw` | tw | Yahoo Taiwan trending |
 | **UDN** | `udn` | tw | Taiwan UDN news |
 | **CoinMarketCap** | `coinmarketcap` | crypto | Trending cryptocurrencies |
-| **DexScreener** | `dexscreener` | crypto | DeFi/DEX trending tokens |
-| **Pinterest** | `pinterest` | social | Trending pins |
-| **LinkedIn Trending** | `linkedin_trending` | professional | LinkedIn trending topics |
-| **Indie Hackers** | `indie_hackers` | dev | Indie maker community |
-| **Xiaohongshu** | `xiaohongshu` | social | Chinese lifestyle platform |
+| **DexScreener** | `dexscreener` | crypto | Most-boosted DEX tokens with names and symbols |
+| **Pinterest** | `pinterest` | social | Trending search keywords (Pinterest Trends) |
+| **LinkedIn Trending** | `linkedin_trending` | professional | LinkedIn News topics (login-walled: returns nothing) |
+| **Indie Hackers** | `indie_hackers` | dev | Ranked homepage posts with upvotes and comments |
+| **Xiaohongshu** | `xiaohongshu` | social | Chinese lifestyle platform (needs signed requests: returns nothing) |
+
+Sources marked "returns nothing" sit behind login walls or bot checks that trend-pulse does not try to get around. They return an empty list instead of junk, and start working again if the site reopens public access.
 
 ## Install
 
@@ -93,6 +95,7 @@ pip install trend-pulse                  # core (httpx + aiosqlite)
 pip install "trend-pulse[mcp]"           # MCP server
 pip install "trend-pulse[dashboard]"     # Streamlit + FastAPI
 pip install "trend-pulse[llm]"           # Claude API for hybrid scoring
+pip install "trend-pulse[social]"        # twikit for X/Twitter trends
 pip install "trend-pulse[all]"           # everything
 ```
 
@@ -134,12 +137,12 @@ async def main():
 
     # All sources, merged ranking
     result = await agg.trending(geo="TW", count=10)
-    for item in result["merged_top"]:
+    for item in result["merged"]:
         print(f"[{item['source']}] {item['keyword']} ({item.get('traffic', '')})")
 
     # With snapshot saving + velocity enrichment
     result = await agg.trending(count=5, save=True)
-    for item in result["merged_top"]:
+    for item in result["merged"]:
         print(f"{item['keyword']} — {item['direction']} (velocity: {item['velocity']})")
 
     # Query history
@@ -149,7 +152,7 @@ async def main():
 
     # Search
     result = await agg.search("Claude AI")
-    for item in result["merged_top"][:5]:
+    for item in result["merged"][:5]:
         print(f"{item['keyword']} - {item['score']:.0f}")
 
 asyncio.run(main())
@@ -181,7 +184,7 @@ asyncio.run(main())
 # Lifecycle prediction
 from trend_pulse.core.intelligence.lifecycle import predict_lifecycle, LifecycleStage
 stage = predict_lifecycle(current_score=75, history=[{"score": s} for s in [20, 35, 50, 65]])
-# -> LifecycleStage.EMERGING
+# -> LifecycleStage.PEAK
 
 # Trend clustering
 from trend_pulse.core.intelligence.clusters import cluster_trends
@@ -280,6 +283,28 @@ pip install "trend-pulse[mcp]"
 }
 ```
 
+#### Alternative: streamable HTTP (Docker, remote agents)
+
+`trend-pulse-server` speaks stdio by default. Pass `--transport streamable-http` to serve MCP over HTTP instead:
+
+```bash
+trend-pulse-server --transport streamable-http --host 127.0.0.1 --port 8080
+# MCP endpoint: http://127.0.0.1:8080/mcp
+```
+
+```json
+{
+  "mcpServers": {
+    "trend-pulse": {
+      "type": "http",
+      "url": "http://127.0.0.1:8080/mcp"
+    }
+  }
+}
+```
+
+> The HTTP endpoint has no authentication. Keep it on localhost (the default `--host`) or put it behind an authenticating reverse proxy.
+
 #### Available tools (29)
 
 **Trend Data (5):**
@@ -353,24 +378,31 @@ streamlit run src/trend_pulse/dashboard/app.py
 uvicorn trend_pulse.dashboard.api:app --port 8000
 
 # Docker Compose (all services)
+cp .env.example .env   # optional credentials, all blank by default
 docker compose up
 ```
 
-Docker Compose services:
+Docker Compose services (images are based on `python:3.14-slim`):
 
 | Service | Description | Port |
 |---------|-------------|------|
-| `api` | FastAPI + MCP server | 8000 |
-| `worker` | Background trend fetcher | — |
+| `mcp` | MCP server over streamable HTTP, endpoint `http://localhost:8080/mcp` | 8080 (localhost only) |
+| `worker` | Hourly trend snapshots into the shared history DB | — |
 | `dashboard` | Streamlit UI | 8501 |
 
 ### Notifications
 
 ```python
-from trend_pulse.notifications.channels import DiscordWebhook
+from trend_pulse.notifications import DiscordWebhook, NotificationPayload
 notifier = DiscordWebhook(webhook_url="https://discord.com/api/webhooks/...")
-await notifier.send("Trending now", {"keyword": "Claude AI", "score": 95})
+await notifier.send(NotificationPayload(
+    title="Trending now",
+    message="Claude AI is rising",
+    data={"keyword": "Claude AI", "score": 95},
+))
 ```
+
+Channels: Discord, Telegram, generic webhook, and email (SMTP). Credentials come from the environment; see [`.env.example`](.env.example). LINE Notify was shut down on 2025-03-31, so the `line` channel no longer delivers.
 
 ## CLI Reference
 
@@ -467,7 +499,7 @@ Access via the `get_lifecycle_prediction` MCP tool or the Python API:
 ```python
 from trend_pulse.core.intelligence.lifecycle import predict_lifecycle, LifecycleStage
 stage = predict_lifecycle(current_score=75, history=[{"score": s} for s in [20, 35, 50, 65]])
-# -> LifecycleStage.EMERGING
+# -> LifecycleStage.PEAK
 ```
 
 ## History Database
@@ -495,7 +527,7 @@ All commands return JSON with a unified structure:
   "geo": "TW",
   "sources_ok": ["google_trends", "hackernews", "reddit"],
   "sources_error": {"wikipedia": "429 rate limited"},
-  "merged_top": [
+  "merged": [
     {
       "keyword": "Temporal: fixing time in JavaScript",
       "score": 100,
@@ -509,7 +541,7 @@ All commands return JSON with a unified structure:
       "metadata": {}
     }
   ],
-  "by_source": {}
+  "sources": {"hackernews": []}
 }
 ```
 
@@ -530,21 +562,21 @@ Each item has a normalized `score` (0–100) for cross-source comparison.
 | Lobste.rs | Unlimited | JSON API |
 | dev.to | Unlimited | Public API |
 | npm | Unlimited | Public API |
-| Reddit | 60 req / min | Requires User-Agent header |
+| Reddit | About 1 req / min | Anonymous RSS feeds; back-to-back calls get HTTP 429 |
 | CoinGecko | 10–30 req / min | Public API |
 | Docker Hub | 100 req / 5 min | Public API |
 | Stack Overflow | 300 req / day | Without API key |
-| ArXiv | Unlimited | RSS/API |
-| Product Hunt | Reasonable | Public API |
+| ArXiv | 1 req / 3 s | Export API; falls back to the daily RSS listing when throttled |
+| Product Hunt | Reasonable | Official Atom feed |
 | Lemmy | Unlimited | Public API (lemmy.world) |
-| Dcard | Reasonable | Public API |
+| Dcard | — | Currently blocked (403) |
 | PTT | Reasonable | Web scrape, don't abuse |
 | Weibo | Reasonable | Web scrape |
-| YouTube Trending | Reasonable | Public RSS/scrape |
+| YouTube Trending | 10,000 units / day | YouTube Data API, 1 unit per call |
 | Threads | Reasonable | Web scrape |
 | X/Twitter | Reasonable | Optional bearer token improves limits |
 | TikTok Trending | Reasonable | Web scrape |
-| LINE Today TW | Reasonable | Web scrape |
+| LINE Today TW | Reasonable | Public web API |
 | Mobile01 | Reasonable | Web scrape |
 | Bahamut | Reasonable | Web scrape |
 | ETtoday | Reasonable | Web scrape |
@@ -552,7 +584,7 @@ Each item has a normalized `score` (0–100) for cross-source comparison.
 | UDN | Reasonable | Web scrape |
 | CoinMarketCap | Reasonable | Public page scrape |
 | DexScreener | Unlimited | Public API |
-| Pinterest | Reasonable | Web scrape |
+| Pinterest | Reasonable | Pinterest Trends JSON |
 | LinkedIn Trending | Reasonable | Web scrape |
 | Indie Hackers | Reasonable | Web scrape |
 | Xiaohongshu | Reasonable | Web scrape |
@@ -588,7 +620,7 @@ Quality gate: overall >= 70, conversation durability >= 55.
 
 ### Hybrid Scoring
 
-`score_content_hybrid` (MCP) and `score_content` (Python API) run heuristic scoring by default. If `ANTHROPIC_API_KEY` is set and `pip install "trend-pulse[llm]"` is installed, a Claude API judge layer supplements the heuristic score. The `mode` field in the result indicates which path ran (`heuristic` or `llm`).
+`score_content_hybrid` (MCP) and `score_content` (Python API) run heuristic scoring by default. If `ANTHROPIC_API_KEY` is set and `pip install "trend-pulse[llm]"` is installed, a Claude API judge layer (`claude-haiku-5-5`) supplements the heuristic score. The `mode` field in the result indicates which path ran (`heuristic` or `hybrid`).
 
 ### Review Checklist (15 Items)
 
@@ -686,16 +718,21 @@ for scene in guide["scene_structure"]:
 
 - `render_page` includes an SSRF guard: scheme whitelist + private IP block. Requests to `file://`, `127.x`, `10.x`, `192.168.x`, and similar ranges are rejected.
 - Hybrid scoring's LLM judge uses prompt injection isolation to prevent trend content from influencing scoring instructions.
+- The streamable HTTP transport has no authentication. It binds to `127.0.0.1` by default, and Docker Compose publishes it on localhost only.
+- API keys are read from the environment only; the YouTube key is sent in a request header, never in the URL.
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.10+ (tested on 3.10 through 3.15)
 - `httpx` (HTTP client)
 - `aiosqlite` (history storage)
-- Optional: `mcp[cli]` for MCP server (`pip install "trend-pulse[mcp]"`)
-- Optional: `streamlit`, `fastapi`, `uvicorn` for dashboard (`pip install "trend-pulse[dashboard]"`)
-- Optional: `anthropic` for hybrid LLM scoring (`pip install "trend-pulse[llm]"`)
-- Optional: `trendspyg`, `pytrends` for enhanced Google Trends
+- Optional: `mcp[cli]` 2.x for the MCP server (`pip install "trend-pulse[mcp]"`)
+- Optional: `streamlit`, `plotly`, `pandas`, `fastapi`, `uvicorn` for the dashboard (`pip install "trend-pulse[dashboard]"`)
+- Optional: `anthropic` 1.x for hybrid LLM scoring (`pip install "trend-pulse[llm]"`)
+- Optional: `twikit` for X/Twitter trends (`pip install "trend-pulse[social]"`; it does not import on Python 3.15 yet, so `x_trending` falls back to the guest API there)
+- Optional credentials: see [`.env.example`](.env.example)
+
+The `google`, `browser`, and `zh` extras are deprecated and install nothing extra: no source uses `trendspyg`, `pytrends`, `playwright`, or `beautifulsoup4`.
 
 ## License
 

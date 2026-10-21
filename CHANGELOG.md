@@ -1,5 +1,48 @@
 # Changelog
 
+## [2.1.0] - 2026-10-21
+
+### Fixed
+
+- **MCP server failed to start on fresh installs.** 2.0.0 declared `mcp>=1.0` with no upper bound, so `pip install "trend-pulse[mcp]"` and `uvx --from "trend-pulse[mcp]" trend-pulse-server` now resolve mcp 2.x, where `mcp.server.fastmcp` no longer exists, and the server exited with `ImportError: Install mcp`. The server is ported to mcp 2.x (`MCPServer`) and the extra is pinned to `mcp>=2.3,<3`.
+- Sources broken by upstream changes since April:
+  - `reddit`: official RSS feeds (`/r/popular/.rss`, `/search.rss`); the JSON endpoints return 403 to anonymous clients
+  - `producthunt`: official Atom feed instead of a blocked homepage scrape
+  - `arxiv`: 5 s budget on the export API, with the official RSS listing as fallback when it is throttled
+  - `google_trends`: scores were all 0 after Google changed the `ht:` namespace URI
+  - `dockerhub`: most-pulled images first again (Docker Hub flipped its sort direction)
+  - `github`: no longer parses the Sponsor button as a `sponsors/<user>` repo
+  - `stackoverflow`: downvoted questions score 0 instead of a negative value
+  - `x_trending`: crashed with `'coroutine' object is not subscriptable` (twikit 2.x `get_trends` is async); it now also loads on Python 3.15, where twikit's js2py dependency cannot import
+  - `pinterest` (Pinterest Trends), `indie_hackers` (ranked homepage feed), `bahamut` (forum hot boards, GNN RSS fallback), `line_today` (realtime most-viewed listing): returned nothing, now return real data
+  - `dexscreener`: token names and symbols instead of truncated addresses; scores relative to the most-boosted token
+  - `threads`, `linkedin_trending`, `xiaohongshu`: returned junk (HTML entities, nav labels, page titles) from login and block pages; they now return nothing
+  - `weibo`: dropped the visitor-token workaround; returns nothing while its bot check is served
+- Docker: the `mcp` service ran a stdio server that exited as soon as it started; it now serves streamable HTTP on port 8080.
+- Dashboard: every action failed with "attempted relative import with no known parent package" under `streamlit run`; it now uses absolute imports and shows the real version.
+- Docs: README and `examples/custom_rss_source.py` used a `merged_top` key that does not exist (`merged`); fixed the notifications and lifecycle examples and the Docker Compose service table.
+
+### Changed
+
+- `anthropic` extra requires `anthropic>=1.17`; the L2 judge uses `claude-haiku-5-5` (was `claude-haiku-4-5-20251001`).
+- `trend-pulse-server` gains `--transport {stdio,streamable-http,sse}`, `--host`, and `--port` (stdio stays the default) and reports its version to MCP clients.
+- `youtube_trending` uses the official YouTube Data API (`chart=mostPopular`) and needs a free `YOUTUBE_API_KEY`; YouTube retired its Trending page in July 2025.
+- Dashboard requires `streamlit>=1.51` and uses `width="stretch"` instead of the deprecated `use_container_width`.
+- `social` extra requires `twikit>=2.0`.
+- The `google`, `browser`, and `zh` extras are deprecated and empty: no code uses `trendspyg`, `pytrends`, `playwright`, or `beautifulsoup4`. They are no longer part of `all`.
+- Lockfile refreshed: mcp 2.3.0, anthropic 1.17.0, Streamlit 1.66, plotly 7.1, pandas 3.0 (2.3 on Python 3.10), FastAPI 0.156, pytest 9.1, ruff 0.17.
+- Docker images use `python:3.14-slim`. Compose drops the obsolete `version` key, publishes the MCP port on localhost only, and health-checks the port. Added `.dockerignore` and `.env.example`.
+- CI tests Python 3.10 through 3.15 with `uv sync --locked`, and builds and `twine check`s the package. Actions bumped to `checkout@v7`, `setup-python@v7`, `setup-uv@v10.3.0` (it publishes only immutable full-version tags), and `codeql-action@v4`. Dependabot now covers uv, GitHub Actions, and Docker monthly, with minor and patch updates grouped.
+- Ruff is pinned to the classic rule set (`E4`, `E7`, `E9`, `F`); ruff 0.16 expanded its defaults from 59 to 413 rules.
+- Dev container uses Python 3.14 and `uv sync --all-extras --dev` (the old command installed nothing).
+- Tests use the public `MCPServer.list_tools()` instead of private internals; 324 tests (was 291), including an end-to-end MCP protocol test and a mocked Claude judge test.
+
+### Known limitations
+
+- `dcard` (Cloudflare 403), `weibo` (visitor check), `xiaohongshu` (signed requests), `mobile01` (403 for non-browser clients), `threads` and `linkedin_trending` (login walls), and `tiktok_trending` (Creative Center now requires login) return no data. trend-pulse does not try to get around these blocks.
+- `x_trending` needs a logged-in twikit session or `X_BEARER_TOKEN`; `youtube_trending` needs `YOUTUBE_API_KEY`.
+- LINE Notify was shut down on 2025-03-31, so the `line` notification channel cannot deliver.
+
 ## [2.0.0] - 2026-04-13
 
 ### Added

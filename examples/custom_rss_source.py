@@ -137,7 +137,7 @@ async def main() -> None:
     else:
         agg = TrendAggregator(sources=[HackerNewsRSSSource])
         result = await agg.trending(count=5)
-        items = [TrendItem(**item) for item in result["merged_top"]]
+        items = [TrendItem(**item) for item in result["merged"]]
 
     for item in items:
         print(f"[{item.source}] {item.keyword} ({item.score:.0f})")

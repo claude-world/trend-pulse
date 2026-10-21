@@ -11,7 +11,7 @@ from __future__ import annotations
 try:
     from twikit import Client as TwikitClient  # type: ignore[import]
     _TWIKIT_AVAILABLE = True
-except ImportError:
+except Exception:  # not installed, or a broken transitive dep (js2py fails to import on Python 3.15)
     _TWIKIT_AVAILABLE = False
 
 import asyncio
@@ -51,19 +51,18 @@ class XTrendingSource(PluginSource):
     async def fetch_trending(self, geo: str = "", count: int = 20) -> list[TrendItem]:
         if _TWIKIT_AVAILABLE:
             return await self._fetch_twikit(geo, count)
-        # twikit not installed: install with pip install 'trend-pulse[social]'
-        return []
+        # twikit not installed (pip install 'trend-pulse[social]'): guest API only
+        return await self._fetch_guest_api(geo, count)
 
     async def _fetch_twikit(self, geo: str, count: int) -> list[TrendItem]:
         """Use twikit for trending topics."""
         client = TwikitClient(language="zh-TW" if geo in ("TW", "HK") else "en-US")
 
-        # twikit can fetch trending without login for basic trends
+        # twikit 2.x get_trends is a coroutine; retry=True recurses forever on empty results
         try:
-            trends = await asyncio.to_thread(
-                client.get_trends,
-                category="trending",
-                count=count,
+            trends = await asyncio.wait_for(
+                client.get_trends("trending", count=count, retry=False),
+                timeout=15,
             )
         except Exception:
             # Fallback to guest API if twikit fails
@@ -72,13 +71,15 @@ class XTrendingSource(PluginSource):
         items: list[TrendItem] = []
         for rank, trend in enumerate(trends[:count], 1):
             name = getattr(trend, "name", str(trend))
-            tweet_count = getattr(trend, "tweet_count", 0) or 0
+            # twikit's tweets_count holds the trend's meta description (e.g. "12.3K posts")
+            meta = getattr(trend, "tweets_count", None)
+            tweet_count = meta if isinstance(meta, int) else 0
             items.append(TrendItem(
                 keyword=name,
                 score=min(tweet_count / 50_000, 100) if tweet_count else max(0, 100 - rank),
                 source=self.name,
                 url=f"https://x.com/search?q={name.replace('#', '%23')}&src=trend_click",
-                traffic=f"{tweet_count:,} tweets" if tweet_count else f"rank #{rank}",
+                traffic=f"{tweet_count:,} tweets" if tweet_count else (str(meta) if meta else f"rank #{rank}"),
                 category="social",
                 metadata={"tweet_count": tweet_count, "rank": rank},
             ))

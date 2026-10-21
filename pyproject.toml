@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "trend-pulse"
-version = "2.0.0"
-description = "Global open-source Agentic Trend Intelligence Platform — 35+ sources, plugin system, vector search, trend clustering, lifecycle prediction, 6-agent content factory, web dashboard, and 23-tool MCP server."
+version = "2.1.0"
+description = "Global open-source Agentic Trend Intelligence Platform — 35+ sources, plugin system, vector search, trend clustering, lifecycle prediction, 6-agent content factory, web dashboard, and 29-tool MCP server."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
@@ -21,6 +21,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
     "httpx>=0.27",
@@ -33,22 +34,27 @@ Repository = "https://github.com/claude-world/trend-pulse"
 "Bug Tracker" = "https://github.com/claude-world/trend-pulse/issues"
 
 [project.optional-dependencies]
-mcp = ["mcp[cli]>=1.0"]
-google = ["trendspyg", "pytrends>=4.9"]
+mcp = ["mcp[cli]>=2.3,<3"]
+google = []  # Deprecated, kept for compatibility: Google Trends uses the public RSS feed
 content = []  # Pure Python + httpx (already in core deps)
-browser = ["playwright>=1.40"]  # TikTok, Instagram JS-heavy pages. Run: playwright install chromium
-social = ["twikit>=1.0"]  # X/Twitter trending (guest token, no login required)
-zh = ["beautifulsoup4>=4.12"]   # Enhanced Chinese HTML parsing
-dashboard = ["streamlit>=1.30", "plotly>=5.0", "fastapi>=0.100", "uvicorn>=0.24", "pandas>=2.0"]  # Web dashboard + REST API
-llm = ["anthropic>=0.35"]  # L2 LLM judge for Hybrid Scoring 2.0
-all = ["mcp[cli]>=1.0", "trendspyg", "pytrends>=4.9", "twikit>=1.0", "playwright>=1.40", "beautifulsoup4>=4.12", "streamlit>=1.30", "plotly>=5.0", "fastapi>=0.100", "uvicorn>=0.24", "pandas>=2.0", "anthropic>=0.35"]
+browser = []  # Deprecated, kept for compatibility: render_page uses Cloudflare Browser Rendering
+social = ["twikit>=2.0"]  # X/Twitter trending (guest token, no login required)
+zh = []  # Deprecated, kept for compatibility: Chinese sources parse with the standard library
+dashboard = ["streamlit>=1.51", "plotly>=5.0", "fastapi>=0.100", "uvicorn>=0.24", "pandas>=2.0"]  # Web dashboard + REST API
+llm = ["anthropic>=1.17"]  # L2 LLM judge for Hybrid Scoring 2.0
+all = ["mcp[cli]>=2.3,<3", "twikit>=2.0", "streamlit>=1.51", "plotly>=5.0", "fastapi>=0.100", "uvicorn>=0.24", "pandas>=2.0", "anthropic>=1.17"]
 
 [project.scripts]
 trend-pulse = "trend_pulse.cli:main"
 trend-pulse-server = "trend_pulse.server:main"
 
 [dependency-groups]
-dev = ["pytest>=8.0", "ruff>=0.4"]
+dev = ["pytest>=9.1", "ruff>=0.17", "packaging>=24"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/trend_pulse"]
+
+[tool.ruff.lint]
+# Ruff 0.16 grew its default rule set from 59 to 413 rules; keep the classic
+# defaults this codebase is written against.
+select = ["E4", "E7", "E9", "F"]

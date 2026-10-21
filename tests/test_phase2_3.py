@@ -126,7 +126,7 @@ class TestNotificationChannels:
 class TestPhase2ServerTools:
     def test_new_tools_registered(self):
         from trend_pulse.server import mcp
-        tools = mcp._tool_manager._tools
+        tools = {tool.name for tool in _run(mcp.list_tools())}
         expected = {
             "run_content_workflow", "get_ab_variants", "score_content_hybrid",
             "get_campaign_calendar", "get_trend_report", "compare_trends",
@@ -137,7 +137,7 @@ class TestPhase2ServerTools:
 
     def test_total_tool_count_23(self):
         from trend_pulse.server import mcp
-        tools = mcp._tool_manager._tools
+        tools = {tool.name for tool in _run(mcp.list_tools())}
         assert len(tools) >= 29  # 29 tools as of v2.0
 
     def test_score_content_hybrid(self):
