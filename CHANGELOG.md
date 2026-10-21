@@ -32,7 +32,7 @@
 - The `google`, `browser`, and `zh` extras are deprecated and empty: no code uses `trendspyg`, `pytrends`, `playwright`, or `beautifulsoup4`. They are no longer part of `all`.
 - Lockfile refreshed: mcp 2.3.0, anthropic 1.17.0, Streamlit 1.66, plotly 7.1, pandas 3.0 (2.3 on Python 3.10), FastAPI 0.156, pytest 9.1, ruff 0.17.
 - Docker images use `python:3.14-slim`. Compose drops the obsolete `version` key, publishes the MCP port on localhost only, and health-checks the port. Added `.dockerignore` and `.env.example`.
-- CI tests Python 3.10 through 3.15 with `uv sync --locked`, and builds and `twine check`s the package. Actions bumped to `checkout@v7`, `setup-python@v7`, `setup-uv@v10`, and `codeql-action@v4`. Dependabot now covers uv, GitHub Actions, and Docker monthly, with minor and patch updates grouped.
+- CI tests Python 3.10 through 3.15 with `uv sync --locked`, and builds and `twine check`s the package. Actions bumped to `checkout@v7`, `setup-python@v7`, `setup-uv@v10.3.0` (it publishes only immutable full-version tags), and `codeql-action@v4`. Dependabot now covers uv, GitHub Actions, and Docker monthly, with minor and patch updates grouped.
 - Ruff is pinned to the classic rule set (`E4`, `E7`, `E9`, `F`); ruff 0.16 expanded its defaults from 59 to 413 rules.
 - Dev container uses Python 3.14 and `uv sync --all-extras --dev` (the old command installed nothing).
 - Tests use the public `MCPServer.list_tools()` instead of private internals; 324 tests (was 291), including an end-to-end MCP protocol test and a mocked Claude judge test.
