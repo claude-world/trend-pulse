@@ -9,6 +9,8 @@ Agentic Trend Intelligence Platform — 37 sources, plugin system, vector search
 
 Use as a **Python library**, **CLI tool**, **MCP server** for Claude Code / AI agents, or a standalone **web dashboard**.
 
+<img src="assets/demo.gif" alt="Terminal: listing 12 of the available sources, then one command returning live trending items from Hacker News, GitHub and Product Hunt merged into a single ranked list" width="809" />
+
 **One-line MCP setup (zero install):**
 
 ```json
